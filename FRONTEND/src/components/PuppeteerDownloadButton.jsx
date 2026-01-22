@@ -6,16 +6,19 @@ const PuppeteerDownloadButton = () => {
   const handleDownload = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/puppeteer/download", {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: "blob", // important for file downloads
-      });
+      const res = await axios.get(
+        "http://localhost:5000/api/puppeteer/download",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: "blob", // important for file downloads
+        }
+      );
 
       // Create a URL and trigger download
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", "download.png"); // filename
+      link.setAttribute("download", "download.png");
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -28,9 +31,22 @@ const PuppeteerDownloadButton = () => {
   return (
     <button
       onClick={handleDownload}
-      className="flex items-center gap-2 px-4 py-2 font-medium text-white bg-green-600 hover:bg-green-700 rounded-xl"
+      className="
+        flex items-center gap-2
+        px-5 py-2.5
+        text-sm font-semibold
+        text-white
+        bg-teal-500
+        rounded-xl
+        shadow-md
+        transition-all duration-200
+        hover:bg-teal-600
+        hover:shadow-lg
+        active:scale-[0.97]
+      "
     >
-      <Download size={16} /> Download
+      <Download size={16} />
+      Download
     </button>
   );
 };

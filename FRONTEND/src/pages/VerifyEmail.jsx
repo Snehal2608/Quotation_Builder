@@ -18,7 +18,7 @@ const VerifyEmail = () => {
   }, [userId, choice]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen text-xl font-bold">
+    <div className="flex items-center justify-center min-h-screen text-xl font-bold text-teal-900 bg-teal-100">
       {message}
     </div>
   );

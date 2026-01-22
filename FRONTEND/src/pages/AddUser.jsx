@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Notification from "../components/Notification";
+import { Eye, EyeOff } from "lucide-react"; // Added imports
 
 const AddUser = () => {
   const [newUser, setNewUser] = useState({
@@ -11,6 +12,7 @@ const AddUser = () => {
     phone: "",
     password: "",
   });
+  const [showPassword, setShowPassword] = useState(false); // Added state
 
   const [notify, setNotify] = useState({ type: "", message: "" });
   const navigate = useNavigate();
@@ -36,7 +38,6 @@ const AddUser = () => {
     { code: "+56", name: "Chile" },
     { code: "+86", name: "China" },
     { code: "+57", name: "Colombia" },
-    { code: "+53", name: "Cuba" },
     { code: "+420", name: "Czech Republic" },
     { code: "+45", name: "Denmark" },
     { code: "+20", name: "Egypt" },
@@ -63,7 +64,6 @@ const AddUser = () => {
     e.preventDefault();
 
     const onlyDigits = newUser.phone.replace(/\D/g, "");
-
     if (onlyDigits.length !== 10) {
       setNotify({
         type: "error",
@@ -94,10 +94,9 @@ const AddUser = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // ⭐⭐⭐ ONLY THIS MESSAGE IS CHANGED ⭐⭐⭐
       setNotify({
         type: "success",
-        message: "User added! Verification email sent.",
+        message: "User added successfully.",
       });
 
       setTimeout(() => navigate("/admin"), 1500);
@@ -110,7 +109,7 @@ const AddUser = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-teal-100">
       {notify.message && (
         <Notification
           type={notify.type}
@@ -121,19 +120,17 @@ const AddUser = () => {
 
       <Header />
 
-      <div className="flex items-start justify-center min-h-[90vh] pt-10 px-6">
-        <div
-          className="w-full max-w-lg p-10 bg-white rounded-3xl shadow-2xl border border-gray-200 
-                     transition-all duration-300 hover:shadow-indigo-300/50 hover:scale-[1.01]"
-        >
+      <div className="flex items-start justify-center min-h-[90vh] px-6 pt-12">
+        <div className="w-full max-w-lg p-10 transition-all bg-white border border-teal-100 shadow-2xl rounded-3xl hover:shadow-teal-500/40">
+
           <button
             onClick={() => navigate("/admin")}
-            className="px-4 py-2 mb-6 text-indigo-600 transition-all border border-indigo-600 rounded-xl hover:bg-indigo-50 hover:scale-105"
+            className="px-4 py-2 mb-6 text-teal-600 transition border border-teal-500 rounded-xl hover:bg-teal-100"
           >
             ← Back
           </button>
 
-          <h2 className="mb-6 text-3xl font-extrabold tracking-wide text-center text-indigo-700">
+          <h2 className="mb-8 text-3xl font-extrabold text-center text-teal-900">
             Add New User
           </h2>
 
@@ -142,8 +139,10 @@ const AddUser = () => {
               type="text"
               placeholder="Full Name"
               value={newUser.name}
-              onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-              className="bg-white input-style"
+              onChange={(e) =>
+                setNewUser({ ...newUser, name: e.target.value })
+              }
+              className="input-style"
               required
             />
 
@@ -151,34 +150,36 @@ const AddUser = () => {
               type="email"
               placeholder="Email (Gmail only)"
               value={newUser.email}
-              onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-              className="bg-white input-style"
+              onChange={(e) =>
+                setNewUser({ ...newUser, email: e.target.value })
+              }
+              className="input-style"
               required
             />
 
-            <div className="flex w-full gap-3">
-              <div className="relative w-[40%]">
+            <div className="flex gap-3">
+              <div className="relative w-[42%]">
                 <div
                   onClick={() => setOpenDropdown(!openDropdown)}
-                  className="bg-white country-select"
+                  className="country-select"
                 >
-                  {countryCode} — {countryCodes.find((c) => c.code === countryCode)?.name}
+                  {countryCode} —{" "}
+                  {countryCodes.find((c) => c.code === countryCode)?.name}
                 </div>
 
                 {openDropdown && (
-                  <div className="absolute z-50 w-full p-2 mt-1 bg-white border border-gray-300 shadow-lg rounded-xl">
+                  <div className="absolute z-50 w-full p-2 mt-1 bg-white border shadow rounded-xl">
                     <input
                       type="text"
                       placeholder="Search country..."
-                      className="w-full p-2 mb-2 text-sm bg-white border rounded-lg"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
+                      className="w-full p-2 mb-2 border rounded-lg"
                     />
-
                     <div className="overflow-y-auto max-h-40">
                       {countryCodes
                         .filter((c) =>
-                          (c.code + " " + c.name)
+                          `${c.code} ${c.name}`
                             .toLowerCase()
                             .includes(search.toLowerCase())
                         )
@@ -190,7 +191,7 @@ const AddUser = () => {
                               setOpenDropdown(false);
                               setSearch("");
                             }}
-                            className="p-2 rounded-lg cursor-pointer hover:bg-indigo-100"
+                            className="p-2 rounded cursor-pointer hover:bg-teal-100"
                           >
                             {c.code} — {c.name}
                           </div>
@@ -204,34 +205,40 @@ const AddUser = () => {
                 type="text"
                 placeholder="Phone"
                 value={newUser.phone}
-                onChange={(e) => {
-                  const digits = e.target.value.replace(/\D/g, "");
+                onChange={(e) =>
                   setNewUser({
                     ...newUser,
-                    phone: digits.slice(0, 10),
-                  });
-                }}
-                className="flex-1 bg-white input-style"
+                    phone: e.target.value.replace(/\D/g, "").slice(0, 10),
+                  })
+                }
+                className="flex-1 input-style"
                 required
               />
             </div>
 
-            <input
-              type="password"
-              placeholder="Password"
-              value={newUser.password}
-              onChange={(e) =>
-                setNewUser({ ...newUser, password: e.target.value })
-              }
-              className="bg-white input-style"
-              required
-            />
+            <div className="relative"> {/* Password Wrapper */}
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={newUser.password}
+                onChange={(e) =>
+                  setNewUser({ ...newUser, password: e.target.value })
+                }
+                className="w-full input-style"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute text-teal-500 right-3 top-3"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
 
             <button
               type="submit"
-              className="w-full py-3 mt-2 text-white bg-indigo-600 rounded-2xl font-semibold 
-                         shadow-lg hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.97] 
-                         transition-all duration-300"
+              className="py-3 mt-2 font-semibold text-white transition-all bg-teal-500 shadow-md rounded-xl hover:bg-teal-600 hover:shadow-lg"
             >
               Add User
             </button>
@@ -240,31 +247,24 @@ const AddUser = () => {
       </div>
 
       <style>{`
-        input:-webkit-autofill {
-          background-color: #ffffff !important;
-          -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
-          color: #000 !important;
-        }
-
         .input-style {
           padding: 14px;
           border-radius: 14px;
-          border: 1px solid #d1d5db;
+          border: 1px solid #5eead4;
           font-size: 15px;
           transition: 0.2s;
         }
         .input-style:focus {
-          border-color: #6366f1;
-          box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+          border-color: #14b8a6;
+          box-shadow: 0 0 0 2px rgba(20,184,166,0.2);
+          outline: none;
         }
-
         .country-select {
-          padding: 12px;
+          padding: 14px;
           border-radius: 14px;
-          border: 1px solid #d1d5db;
-          font-size: 14px;
-          transition: 0.2s;
+          border: 1px solid #5eead4;
           cursor: pointer;
+          background: white;
         }
       `}</style>
     </div>

@@ -1,18 +1,24 @@
-import React, { useEffect } from "react";
-import { logoutUser } from "../api";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuote } from "../context/QuoteContext";
 
-export default function Logout() {
+const Logout = () => {
   const navigate = useNavigate();
+  const { resetQuote } = useQuote();
 
   useEffect(() => {
-    logoutUser();
-    navigate("/login");
-  }, [navigate]);
+    // 🔥 CLEAR QUOTATION DATA (SAFE GUARD)
+    if (resetQuote) resetQuote();
 
-  return (
-    <div className="flex items-center justify-center h-screen text-white bg-gray-900">
-      <h2>Logging out...</h2>
-    </div>
-  );
-}
+    // Clear Auth Data
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    // Redirect to login
+    navigate("/login");
+  }, [navigate, resetQuote]);
+
+  return null;
+};
+
+export default Logout;

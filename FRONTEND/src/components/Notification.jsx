@@ -1,20 +1,40 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
+import { X } from "lucide-react";
 
-export default function Notify({ type = "error", message, onClose }) {
+const Notification = ({ type = "success", message, onClose, duration = 3000 }) => {
   useEffect(() => {
-    const timer = setTimeout(onClose, 3000);
+    if (!message) return;
+
+    const timer = setTimeout(() => {
+      onClose();
+    }, duration);
+
     return () => clearTimeout(timer);
-  }, []);
+  }, [message, duration, onClose]);
+
+  const styles =
+    type === "success"
+      ? "bg-teal-500 text-white"
+      : type === "error"
+      ? "bg-red-500 text-white"
+      : "bg-gray-800 text-white";
 
   return (
-    <div className="fixed z-50 top-6 right-6">
+    <div className="fixed z-50 top-6 right-6 animate-slide-in">
       <div
-        className={`px-5 py-3 rounded-xl shadow-xl text-white flex items-center gap-3
-        ${type === "success" ? "bg-green-600" : "bg-red-600"}`}
+        className={`flex items-center gap-4 px-6 py-4 rounded-2xl shadow-xl ${styles}`}
       >
-        <span className="font-semibold">{message}</span>
-        <button onClick={onClose} className="text-white">✕</button>
+        <span className="text-sm font-semibold">{message}</span>
+
+        <button
+          onClick={onClose}
+          className="p-1 transition hover:opacity-80"
+        >
+          <X size={18} />
+        </button>
       </div>
     </div>
   );
-}
+};
+
+export default Notification;

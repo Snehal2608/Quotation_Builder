@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import Notification from "../components/Notification";
 
 const EditUser = () => {
@@ -8,7 +9,6 @@ const EditUser = () => {
   const navigate = useNavigate();
 
   const [notify, setNotify] = useState({ type: "", message: "" });
-
   const [userData, setUserData] = useState({
     name: "",
     email: "",
@@ -29,7 +29,6 @@ const EditUser = () => {
     { code: "+65", name: "Singapore" },
   ];
 
-  // Load user data
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -39,7 +38,6 @@ const EditUser = () => {
         );
 
         const u = res.data;
-
         const digits = u.phoneNo.replace(/\D/g, "");
         const local = digits.slice(-10);
         const country = "+" + digits.slice(0, digits.length - 10);
@@ -48,19 +46,17 @@ const EditUser = () => {
           name: u.name,
           email: u.email,
           phone: local,
-          countryCode: country,
+          countryCode: country || "+91",
         });
       } catch (err) {
         setNotify({ type: "error", message: "Error loading user data" });
       }
     };
-
     fetchUser();
-  }, [id]);
+  }, [id, token]);
 
   const handleSave = async (e) => {
     e.preventDefault();
-
     try {
       const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
       if (!gmailRegex.test(userData.email.trim())) {
@@ -86,7 +82,6 @@ const EditUser = () => {
       );
 
       setNotify({ type: "success", message: "User updated successfully!" });
-
       setTimeout(() => navigate("/admin"), 1200);
     } catch (err) {
       setNotify({
@@ -97,7 +92,7 @@ const EditUser = () => {
   };
 
   return (
-    <div className="flex items-start justify-center min-h-screen px-6 pt-10 bg-gray-100">
+    <div className="flex items-start justify-center min-h-screen px-6 pt-10 bg-teal-100">
       {notify.message && (
         <Notification
           type={notify.type}
@@ -106,18 +101,20 @@ const EditUser = () => {
         />
       )}
 
+      {/* Box size kept exactly as original (max-w-lg and rounded-3xl) */}
       <div
-        className="w-full max-w-lg p-10 bg-white rounded-3xl shadow-2xl border border-gray-200 
-                   transition-all duration-300 hover:shadow-indigo-300/50 hover:scale-[1.01]"
+        className="w-full max-w-lg p-10 bg-white rounded-3xl shadow-2xl border border-teal-100 
+                   transition-all duration-300 hover:shadow-teal-500/40 hover:scale-[1.01]"
       >
         <button
           onClick={() => navigate("/admin")}
-          className="px-4 py-2 mb-6 text-indigo-600 transition-all border border-indigo-600 rounded-xl hover:bg-indigo-50 hover:scale-105"
+          className="flex items-center gap-2 px-4 py-2 mb-6 text-teal-600 transition-all border border-teal-500 rounded-xl hover:bg-teal-100"
         >
-          ← Back
+          <ArrowLeft size={18} />
+          Back
         </button>
 
-        <h2 className="mb-6 text-3xl font-extrabold tracking-wide text-center text-indigo-700">
+        <h2 className="mb-6 text-3xl font-extrabold tracking-wide text-center text-teal-900">
           Edit User
         </h2>
 
@@ -126,9 +123,7 @@ const EditUser = () => {
             type="text"
             placeholder="Full Name"
             value={userData.name}
-            onChange={(e) =>
-              setUserData({ ...userData, name: e.target.value })
-            }
+            onChange={(e) => setUserData({ ...userData, name: e.target.value })}
             className="bg-white input-style"
             required
           />
@@ -137,9 +132,7 @@ const EditUser = () => {
             type="email"
             placeholder="Email (Gmail only)"
             value={userData.email}
-            onChange={(e) =>
-              setUserData({ ...userData, email: e.target.value })
-            }
+            onChange={(e) => setUserData({ ...userData, email: e.target.value })}
             className="bg-white input-style"
             required
           />
@@ -147,10 +140,8 @@ const EditUser = () => {
           <div className="flex w-full gap-3">
             <select
               value={userData.countryCode}
-              onChange={(e) =>
-                setUserData({ ...userData, countryCode: e.target.value })
-              }
-              className="w-[40%] p-3 border rounded-xl"
+              onChange={(e) => setUserData({ ...userData, countryCode: e.target.value })}
+              className="w-[40%] p-3 border border-teal-200 rounded-xl outline-none focus:border-teal-500"
             >
               {countryCodes.map((c) => (
                 <option key={c.code} value={c.code}>
@@ -177,8 +168,8 @@ const EditUser = () => {
 
           <button
             type="submit"
-            className="w-full py-3 mt-2 text-white bg-indigo-600 rounded-2xl font-semibold 
-                       shadow-lg hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.97] 
+            className="w-full py-3 mt-2 text-white bg-teal-500 rounded-2xl font-semibold 
+                       shadow-lg hover:bg-teal-600 hover:scale-[1.02] active:scale-[0.97] 
                        transition-all duration-300"
           >
             Save Changes
@@ -190,13 +181,14 @@ const EditUser = () => {
         .input-style {
           padding: 14px;
           border-radius: 14px;
-          border: 1px solid #d1d5db;
+          border: 1px solid #5eead4;
           font-size: 15px;
           transition: 0.2s;
+          outline: none;
         }
         .input-style:focus {
-          border-color: #6366f1;
-          box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+          border-color: #14b8a6;
+          box-shadow: 0 0 10px rgba(20, 184, 166, 0.35);
         }
       `}</style>
     </div>

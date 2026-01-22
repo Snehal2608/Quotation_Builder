@@ -35,8 +35,11 @@ const userSchema = new mongoose.Schema(
     // Every user belongs to an admin
     adminId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
 
-    // Admin logo URL (served from /uploads/admin-logos/...)
-    logoUrl: { type: String, default: null },
+    // Admin logo as Base64 string
+    logoBase64: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true }
 );

@@ -2,12 +2,16 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Notify from "../components/Notification";
+import { useAuth } from "../context/AuthContext";
+import { Eye, EyeOff } from "lucide-react"; // Added imports
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // Added state
   const [notify, setNotify] = useState(null);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -21,11 +25,17 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/login", { email, password });
+      const res = await axios.post(
+        "http://localhost:5000/api/auth/login",
+        { email, password }
+      );
+
       const { token, user } = res.data;
 
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
+      
+      login(); 
 
       setNotify({ type: "success", message: "Login successful!" });
 
@@ -34,66 +44,91 @@ const Login = () => {
         else navigate("/generate-quotation");
       }, 800);
     } catch (err) {
-      setNotify({ type: "error", message: err.response?.data?.message || "Login failed" });
+      setNotify({
+        type: "error",
+        message: err.response?.data?.message || "Login failed",
+      });
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen px-6 bg-gradient-to-br from-blue-50 via-white to-blue-100">
+    <div className="flex items-center justify-center min-h-screen px-6 bg-teal-100">
       {notify && (
-        <Notify type={notify.type} message={notify.message} onClose={() => setNotify(null)} />
+        <Notify
+          type={notify.type}
+          message={notify.message}
+          onClose={() => setNotify(null)}
+        />
       )}
 
-      <div className="relative w-full max-w-md p-10 overflow-hidden bg-white shadow-2xl rounded-3xl">
-        <div className="absolute w-56 h-56 rounded-full -top-16 -right-16 bg-gradient-to-tr from-blue-400 to-indigo-500 opacity-20 blur-3xl"></div>
-        <div className="absolute w-56 h-56 rounded-full -bottom-16 -left-16 bg-gradient-to-bl from-indigo-400 to-blue-500 opacity-20 blur-3xl"></div>
+      <div className="relative w-full max-w-md p-10 overflow-hidden transition bg-white border border-teal-100 shadow-2xl rounded-3xl hover:shadow-teal-500/40">
+
+        <div className="absolute w-56 h-56 bg-teal-500 rounded-full -top-20 -right-20 opacity-20 blur-3xl"></div>
+        <div className="absolute w-56 h-56 bg-teal-600 rounded-full -bottom-20 -left-20 opacity-20 blur-3xl"></div>
 
         <button
           onClick={() => navigate("/")}
-          className="px-4 py-2 mb-6 text-indigo-600 transition-all border border-indigo-600 rounded-xl hover:bg-indigo-50 hover:scale-105"
+          className="px-4 py-2 mb-6 text-teal-600 transition border border-teal-500 rounded-xl hover:bg-teal-100"
         >
           ← Back
         </button>
 
-        <form onSubmit={handleSubmit}>
-          <h2 className="mb-6 text-3xl font-extrabold text-center text-indigo-700">Login</h2>
+        <form onSubmit={handleSubmit} className="relative z-10">
+          <h2 className="mb-8 text-3xl font-extrabold text-center text-teal-900">
+            Login
+          </h2>
 
           <input
             type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-3 mb-4 text-gray-800 placeholder-gray-400 transition-all duration-200 bg-white border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full p-3 mb-4 text-gray-800 placeholder-gray-400 bg-white border border-teal-200 shadow-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-300"
             required
           />
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-3 mb-2 text-gray-800 placeholder-gray-400 transition-all duration-200 bg-white border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            required
-          />
+          <div className="relative mb-3"> {/* Password Wrapper */}
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-3 text-gray-800 placeholder-gray-400 bg-white border border-teal-200 shadow-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-300"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute text-teal-500 right-3 top-3"
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
 
-          {/* ⭐⭐⭐ UPDATED FORGOT PASSWORD BUTTON — SAME STYLE AS OTHER BUTTONS ⭐⭐⭐ */}
           <button
             type="button"
             onClick={() => navigate("/forgot-password")}
-            className="px-4 py-2 mb-5 text-indigo-600 transition-all border border-indigo-600 rounded-xl hover:bg-indigo-50 hover:scale-105"
+            className="px-4 py-2 mb-6 text-teal-600 transition border border-teal-500 rounded-xl hover:bg-teal-100"
           >
             Forgot Password?
           </button>
 
           <button
             type="submit"
-            className="w-full py-3 font-semibold text-white bg-indigo-600 rounded-xl shadow-md hover:bg-indigo-700 hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
+            className="
+              w-full py-3
+              font-semibold text-white
+              bg-teal-500 rounded-xl shadow-md
+              hover:bg-teal-600 hover:shadow-lg
+              transition-all
+              transform hover:scale-[1.02]
+              active:scale-[0.97]
+            "
           >
             Login
           </button>
         </form>
 
-        {/* 🔥 FIX BLUE BACKGROUND ON AUTOFILL */}
         <style>{`
           input:-webkit-autofill {
             background-color: #ffffff !important;

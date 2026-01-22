@@ -1,29 +1,37 @@
 import React, { useState, useEffect } from "react";
-import { Trash2, X, CheckCircle, Edit3 } from "lucide-react";
-import { createRate, updateRate, deleteRate } from "../api";
+import { Trash2, X, CheckCircle, Edit3, Image as ImageIcon } from "lucide-react";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { useRates } from "../context/RateContext"; // ⭐ ADDED
+import { useRates } from "../context/RateContext";
+import { fileToBase64 } from "../utils/fileToBase64";
+
+const MAX_DESCRIPTION_LENGTH = 50;
 
 const ManageRates = () => {
-  const { rates, fetchRates } = useRates(); // ⭐ GET GLOBAL fetchRates
+  const { rates, fetchRates } = useRates();
+
   const [itemName, setItemName] = useState("");
   const [rate, setRate] = useState("");
+  const [description, setDescription] = useState("");
+  const [image, setImage] = useState(null);
+
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
   const [editingItem, setEditingItem] = useState(null);
   const [newRate, setNewRate] = useState("");
+
   const navigate = useNavigate();
 
-  // Admin-only access
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
     if (!user || user.role !== "admin") {
       alert("Access denied. Only admins can access this page.");
       navigate("/generate-quotation");
     } else {
-      fetchRates(); // ⭐ Load rates globally
+      fetchRates();
     }
-  }, [navigate]);
+  }, [navigate, fetchRates]);
 
   const clearMessages = () => {
     setTimeout(() => {
@@ -32,10 +40,9 @@ const ManageRates = () => {
     }, 4000);
   };
 
-  // Add / Update
   const handleAddOrUpdate = async () => {
-    if (!itemName.trim()) {
-      setError("Item Name is required.");
+    if (!itemName.trim() || !rate || !description.trim() || !image) {
+      setError("All fields (Name, Rate, Description, and Image) are required.");
       clearMessages();
       return;
     }
@@ -48,45 +55,53 @@ const ManageRates = () => {
     }
 
     try {
-      const existing = rates.find(
-        (r) => r.itemName?.toLowerCase() === itemName.toLowerCase()
+      const token = localStorage.getItem("token");
+      const imageBase64 = await fileToBase64(image);
+
+      await axios.post(
+        "http://localhost:5000/api/rates",
+        {
+          itemName,
+          rate: rateValue,
+          description,
+          imageBase64, 
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
-      if (existing) {
-        await updateRate(existing._id, itemName, rateValue);
-        setSuccess(`Rate for ${itemName} updated to ₹${rateValue}/sq.ft.`);
-      } else {
-        await createRate(itemName, rateValue);
-        setSuccess(`New rate for ${itemName} added successfully.`);
-      }
-
-      await fetchRates(); // ⭐ IMPORTANT: Refresh for all pages
+      setSuccess("Rate saved successfully.");
+      await fetchRates();
+      
+      setItemName("");
+      setRate("");
+      setDescription("");
+      setImage(null);
     } catch (err) {
-      console.error(err);
-      setError(
-        err.response?.data?.message ||
-          "Error saving rate. Check backend or token."
-      );
+      setError("Error saving rate.");
     }
-
-    setItemName("");
-    setRate("");
     clearMessages();
   };
 
-  // Delete
   const handleDelete = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete ${name}?`)) return;
     try {
-      await deleteRate(id);
+      const token = localStorage.getItem("token");
+      await axios.delete(`http://localhost:5000/api/rates/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
       setSuccess(`Rate for ${name} deleted successfully.`);
-      await fetchRates(); // ⭐ REFRESH CONTEXT
+      await fetchRates();
       clearMessages();
     } catch (err) {
       setError("Error deleting item.");
     }
   };
 
-  // Edit Save
   const handleEditSave = async (id, name) => {
     const rateValue = parseFloat(newRate);
     if (isNaN(rateValue) || rateValue <= 0) {
@@ -96,11 +111,24 @@ const ManageRates = () => {
     }
 
     try {
-      await updateRate(id, name, rateValue);
+      const token = localStorage.getItem("token");
+      const currentItem = rates.find((r) => r._id === id);
+
+      await axios.put(
+        `http://localhost:5000/api/rates/${id}`,
+        {
+          itemName: currentItem.itemName,
+          rate: rateValue,
+          description: currentItem.description,
+          // Note: Backend needs to handle cases where imageBase64 isn't sent in PUT
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
       setEditingItem(null);
       setNewRate("");
-      setSuccess(`Rate for ${name} updated to ₹${rateValue}/sq.ft.`);
-      await fetchRates(); // ⭐ REFRESH
+      setSuccess(`Rate for ${name} updated.`);
+      await fetchRates();
       clearMessages();
     } catch (err) {
       setError("Error updating rate.");
@@ -108,148 +136,173 @@ const ManageRates = () => {
   };
 
   return (
-    <div
-      className="flex items-start justify-center min-h-screen pt-6 pb-10 overflow-y-auto bg-gray-50"
-      style={{ scrollbarWidth: "none" }}
-    >
-      <style>
-        {`
-          ::-webkit-scrollbar {
-            display: none;
-          }
-        `}
-      </style>
-
-      <div className="w-full max-w-6xl p-6 mx-auto bg-white border border-gray-200 shadow-2xl rounded-3xl">
-        <h1 className="text-4xl font-extrabold text-gray-900">Rate Management</h1>
-        <p className="mt-2 text-lg text-gray-500">
-          Set square foot rates for your construction items. All rates are in{" "}
-          <span className="font-medium text-gray-700">₹ per sq.ft.</span>
-        </p>
-
-        {(success || error) && (
-          <div
-            className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg transition-opacity duration-300 ${
-              success ? "bg-green-500 text-white" : "bg-red-500 text-white"
-            }`}
-          >
-            <div className="flex items-center">
-              {success ? (
-                <CheckCircle className="w-6 h-6 mr-2" />
-              ) : (
-                <X className="w-6 h-6 mr-2" />
-              )}
-              <p className="font-medium">{success || error}</p>
-              <button
-                onClick={() => {
-                  setSuccess(null);
-                  setError(null);
-                }}
-                className="ml-4 text-white hover:text-gray-100"
-              >
-                <X size={20} />
-              </button>
-            </div>
+    <div className="flex items-start justify-center min-h-screen py-8 bg-[#cbf3f0]">
+      <div className="w-full max-w-6xl p-6 bg-white shadow-xl rounded-[2.5rem] md:p-10">
+        
+        {(error || success) && (
+          <div className={`mb-6 p-4 rounded-xl font-bold text-center ${error ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600"}`}>
+            {error || success}
           </div>
         )}
 
-        {/* Add/Update Section */}
-        <div className="p-6 mt-6 bg-white border-2 border-indigo-100 rounded-3xl hover:shadow-2xl">
-          <h2 className="text-2xl font-semibold text-indigo-700">
-            + Add / Update Item Rate
+        <h1 className="mb-8 text-4xl font-extrabold text-[#004e64]">
+          Rate Management
+        </h1>
+
+        {/* Input Form Section */}
+        <div className="p-8 mb-10 border border-[#e9fffd] shadow-lg bg-[#f0fdfa] rounded-[2rem]">
+          <h2 className="mb-6 text-2xl font-bold text-[#004e64]">
+            + Add New Item Rate
           </h2>
-          <div className="flex flex-wrap items-center mt-4 space-x-4">
-            <input
-              type="text"
-              placeholder="e.g., Painting, POP, Tiling"
-              value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
-              className="flex-1 px-5 py-2 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="flex flex-col">
+              <label className="block mb-2 text-sm font-bold text-gray-600">Item Name</label>
+              <input
+                type="text"
+                placeholder="Enter item name..."
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+                className="p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#06d6a0] outline-none"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="block mb-2 text-sm font-bold text-gray-600">Rate (per sq.ft)</label>
+              <input
+                type="number"
+                placeholder="0.00"
+                step="0.01"
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
+                className="p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#06d6a0] outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-bold text-gray-600">Description</label>
+              <span className={`text-[10px] font-bold ${description.length === MAX_DESCRIPTION_LENGTH ? 'text-red-500' : 'text-gray-400'}`}>
+                {description.length}/{MAX_DESCRIPTION_LENGTH}
+              </span>
+            </div>
+            <textarea
+              placeholder="Short detail (max 50 chars)..."
+              value={description}
+              onChange={(e) => {
+                if (e.target.value.length <= MAX_DESCRIPTION_LENGTH) {
+                  setDescription(e.target.value);
+                }
+              }}
+              rows={2}
+              className="w-full p-3 border border-gray-200 resize-none rounded-xl focus:ring-2 focus:ring-[#06d6a0] outline-none"
             />
-            <input
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              value={rate}
-              onChange={(e) => setRate(e.target.value)}
-              className="w-48 px-5 py-2 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 mt-6">
+            <label className="relative">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImage(e.target.files[0])}
+                className="hidden"
+              />
+              <span className="inline-flex items-center justify-center px-6 py-3 font-bold text-white bg-[#00b4d8] shadow-md cursor-pointer rounded-xl hover:bg-[#0096b4] transition-all">
+                <ImageIcon size={18} className="mr-2" />
+                Choose Image
+              </span>
+            </label>
+            
+            {image && (
+              <span className="flex items-center gap-1 px-3 py-1 text-sm font-bold border rounded-lg text-emerald-600 bg-emerald-50 border-emerald-100">
+                <CheckCircle size={14} />
+                Selected: {image.name.length > 15 ? `${image.name.substring(0, 15)}...` : image.name}
+              </span>
+            )}
+
             <button
               onClick={handleAddOrUpdate}
-              className="px-8 py-2 text-lg font-semibold text-white bg-blue-600 shadow-md rounded-xl hover:bg-blue-700"
+              className="px-8 py-3 font-bold text-white bg-[#06d6a0] shadow-md rounded-xl hover:bg-[#05bc8c] transition-all ml-auto"
             >
-              Save
+              Save Rate
             </button>
           </div>
         </div>
 
-        {/* Rates List Section */}
-        <div className="p-6 mt-6 border-2 border-indigo-100 bg-indigo-50 rounded-3xl hover:shadow-2xl">
-          <h2 className="mb-4 text-2xl font-semibold text-indigo-700">
-            Edit or Delete Rates
-          </h2>
-
-          {rates.length > 0 && (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {rates.map((item) => (
-                <div
-                  key={item._id}
-                  className="relative p-4 bg-white border-2 border-gray-200 rounded-2xl hover:shadow-2xl hover:scale-[1.02] transition-transform duration-300"
-                >
-                  <button
-                    onClick={() => handleDelete(item._id, item.itemName)}
-                    className="absolute p-1 text-red-500 rounded-full top-2 right-2 hover:bg-red-50"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-
-                  <h4 className="text-xl font-semibold text-indigo-700">
-                    {item.itemName}
-                  </h4>
-                  <p className="mt-1 text-sm text-gray-500">Rate (₹/sq.ft)</p>
-
-                  {editingItem === item._id ? (
-                    <div className="flex items-center mt-2 space-x-2">
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={newRate}
-                        onChange={(e) => setNewRate(e.target.value)}
-                        className="w-24 px-3 py-1 text-lg font-bold border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
-                      />
-                      <button
-                        onClick={() => handleEditSave(item._id, item.itemName)}
-                        className="px-3 py-1 text-sm font-semibold text-white bg-green-600 rounded-lg"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => setEditingItem(null)}
-                        className="px-3 py-1 text-sm font-semibold text-white bg-gray-400 rounded-lg"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-lg font-bold text-gray-900">
-                        ₹{item.rate.toFixed(2)}
-                      </span>
-                      <button
-                        onClick={() => {
-                          setEditingItem(item._id);
-                          setNewRate(item.rate);
-                        }}
-                        className="flex items-center px-2 py-1 text-sm font-semibold text-white bg-blue-600 rounded-lg"
-                      >
-                        <Edit3 size={14} className="mr-1" /> Edit
-                      </button>
-                    </div>
-                  )}
+        {/* Rates List Grid */}
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {rates.map((item) => (
+            <div
+              key={item._id}
+              className="relative p-6 bg-white border border-[#e9fffd] shadow-md rounded-[1.5rem] hover:shadow-lg transition-shadow overflow-hidden"
+            >
+              {/* Image Preview for the Card */}
+              {item.image && (
+                <div className="w-full h-32 mb-4 overflow-hidden rounded-xl bg-gray-50">
+                   <img 
+                    src={item.image} 
+                    alt={item.itemName} 
+                    className="object-contain w-full h-full"
+                  />
                 </div>
-              ))}
+              )}
+
+              <button
+                onClick={() => handleDelete(item._id, item.itemName)}
+                className="absolute p-1 text-gray-400 transition-colors rounded-full top-4 right-4 hover:text-red-500 bg-white/80"
+              >
+                <Trash2 size={18} />
+              </button>
+
+              <h3 className="pr-6 text-xl font-bold text-[#004e64] truncate">
+                {item.itemName}
+              </h3>
+
+              <p className="mt-2 text-sm text-gray-500 line-clamp-2 min-h-[2.5rem]">
+                {item.description}
+              </p>
+
+              {editingItem === item._id ? (
+                <div className="flex items-center gap-2 mt-4">
+                  <input
+                    type="number"
+                    value={newRate}
+                    onChange={(e) => setNewRate(e.target.value)}
+                    className="w-24 p-2 border border-teal-200 rounded-lg outline-none focus:ring-2 focus:ring-[#06d6a0]"
+                  />
+                  <button
+                    onClick={() => handleEditSave(item._id, item.itemName)}
+                    className="px-3 py-1 font-bold text-white bg-[#06d6a0] rounded-lg hover:bg-[#05bc8c]"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditingItem(null)}
+                    className="px-3 py-1 font-bold text-gray-500 bg-gray-100 rounded-lg hover:bg-gray-200"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between mt-6">
+                  <span className="text-xl font-black text-[#06d6a0]">
+                    ₹{item.rate}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setEditingItem(item._id);
+                      setNewRate(item.rate);
+                    }}
+                    className="flex items-center px-4 py-2 font-bold text-white bg-[#00b4d8] rounded-xl hover:bg-[#0096b4] transition-all text-sm"
+                  >
+                    <Edit3 size={14} className="mr-2" />
+                    Edit
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+          ))}
         </div>
       </div>
     </div>

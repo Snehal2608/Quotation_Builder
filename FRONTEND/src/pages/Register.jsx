@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
 import Notification from "../components/Notification";
+import { useNavigate } from "react-router-dom";
+import { fileToBase64 } from "../utils/fileToBase64";
+import { Eye, EyeOff } from "lucide-react"; // Added imports
 
 const Register = () => {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // Added state
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [notify, setNotify] = useState({ type: "", message: "" });
   const navigate = useNavigate();
-
-  const role = "admin";
 
   const countryCodes = [
     { code: "+91", name: "India" },
@@ -21,31 +22,10 @@ const Register = () => {
     { code: "+44", name: "United Kingdom" },
     { code: "+61", name: "Australia" },
     { code: "+971", name: "UAE" },
-    { code: "+977", name: "Nepal" },
-    { code: "+880", name: "Bangladesh" },
-    { code: "+92", name: "Pakistan" },
-    { code: "+94", name: "Sri Lanka" },
     { code: "+65", name: "Singapore" },
-    { code: "+62", name: "Indonesia" },
-    { code: "+60", name: "Malaysia" },
     { code: "+81", name: "Japan" },
-    { code: "+82", name: "South Korea" },
-    { code: "+86", name: "China" },
-    { code: "+7", name: "Russia" },
-    { code: "+33", name: "France" },
     { code: "+49", name: "Germany" },
-    { code: "+39", name: "Italy" },
-    { code: "+34", name: "Spain" },
-    { code: "+31", name: "Netherlands" },
-    { code: "+46", name: "Sweden" },
-    { code: "+41", name: "Switzerland" },
-    { code: "+45", name: "Denmark" },
-    { code: "+47", name: "Norway" },
-    { code: "+48", name: "Poland" },
-    { code: "+55", name: "Brazil" },
-    { code: "+54", name: "Argentina" },
-    { code: "+57", name: "Colombia" },
-    { code: "+63", name: "Philippines" },
+    { code: "+33", name: "France" },
   ];
 
   const [countryCode, setCountryCode] = useState("+91");
@@ -70,23 +50,24 @@ const Register = () => {
     e.preventDefault();
 
     try {
-      const formData = new FormData();
+      let logoBase64 = null;
+      if (logoFile) {
+        logoBase64 = await fileToBase64(logoFile);
+      }
 
-      // ⭐ FIXED: send only 10 digits
-      formData.append("phoneNo", phone);
+      await axios.post("http://localhost:5000/api/auth/register", {
+        name,
+        email,
+        password,
+        phoneNo: phone,
+        countryCode,
+        logoBase64,
+      });
 
-      // ⭐ Send country code separately
-      formData.append("countryCode", countryCode);
-
-      formData.append("name", name);
-      formData.append("email", email);
-      formData.append("password", password);
-
-      if (logoFile) formData.append("logo", logoFile);
-
-      await axios.post("http://localhost:5000/api/auth/register", formData);
-
-      setNotify({ type: "success", message: "Admin registered successfully!" });
+      setNotify({
+        type: "success",
+        message: "Admin registered successfully!",
+      });
 
       setTimeout(() => navigate("/login"), 1200);
     } catch (err) {
@@ -98,7 +79,7 @@ const Register = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen px-4 bg-gradient-to-br from-blue-50 via-white to-blue-100">
+    <div className="flex items-center justify-center min-h-screen px-6 bg-teal-100">
       {notify.message && (
         <Notification
           type={notify.type}
@@ -107,36 +88,36 @@ const Register = () => {
         />
       )}
 
-      <div className="relative w-full max-w-md p-10 overflow-hidden bg-white border border-blue-100 shadow-2xl rounded-3xl">
+      <div className="relative w-full max-w-md p-10 overflow-hidden transition bg-white border border-teal-100 shadow-2xl rounded-3xl hover:shadow-teal-500/40">
+        <div className="absolute w-56 h-56 bg-teal-500 rounded-full -top-20 -right-20 opacity-20 blur-3xl"></div>
+        <div className="absolute w-56 h-56 bg-teal-600 rounded-full -bottom-20 -left-20 opacity-20 blur-3xl"></div>
 
-        {/* BACK BUTTON */}
         <button
           onClick={() => navigate("/")}
-          className="px-4 py-2 mb-6 text-indigo-600 transition-all border border-indigo-600 rounded-xl hover:bg-indigo-50 hover:scale-105"
+          className="px-4 py-2 mb-6 text-teal-600 transition border border-teal-500 rounded-xl hover:bg-teal-100"
         >
           ← Back
         </button>
 
-        <h2 className="mb-8 text-3xl font-extrabold text-center text-indigo-700">
+        <h2 className="mb-8 text-3xl font-extrabold text-center text-teal-900">
           Register Admin
         </h2>
 
-        <form onSubmit={handleSubmit} className="relative z-10 flex flex-col gap-5">
-
+        <form onSubmit={handleSubmit} className="relative z-10 flex flex-col gap-4">
           <input
             type="text"
             placeholder="Full Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full p-4 border rounded-xl bg-gray-50 focus:outline-none"
+            className="w-full p-3 border border-teal-200 rounded-xl bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-300"
             required
           />
 
-          <div className="flex w-full gap-3">
+          <div className="flex gap-3">
             <select
               value={countryCode}
               onChange={(e) => setCountryCode(e.target.value)}
-              className="w-[45%] p-4 rounded-xl border border-gray-300 bg-gray-50 text-gray-800 focus:outline-none"
+              className="w-[40%] p-3 border border-teal-200 rounded-xl bg-teal-50 focus:outline-none"
             >
               {countryCodes.map((c) => (
                 <option key={c.code} value={c.code}>
@@ -151,7 +132,7 @@ const Register = () => {
               value={phone}
               maxLength={10}
               onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-              className="flex-1 p-4 border border-gray-300 bg-gray-50 rounded-xl focus:outline-none"
+              className="flex-1 p-3 border border-teal-200 rounded-xl bg-teal-50 focus:outline-none"
               required
             />
           </div>
@@ -161,66 +142,74 @@ const Register = () => {
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-4 border rounded-xl bg-gray-50 focus:outline-none"
+            className="w-full p-3 border border-teal-200 rounded-xl bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-300"
             required
           />
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-4 border rounded-xl bg-gray-50 focus:outline-none"
-            required
-          />
+          <div className="relative"> {/* Password Wrapper */}
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-3 border border-teal-200 rounded-xl bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-300"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute text-teal-500 right-3 top-3"
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
 
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-700">Upload Logo (optional)</label>
-
+          <div>
+            <label className="block mb-1 text-sm font-medium text-teal-700">
+              Upload Logo (optional)
+            </label>
             <input
               type="file"
               accept="image/*"
               onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
-              className="w-full p-2 border rounded-lg"
+              className="w-full p-2 border border-teal-200 rounded-lg"
             />
 
             {logoPreview && (
               <img
                 src={logoPreview}
                 alt="logo preview"
-                className="object-contain p-1 border rounded-md w-28 h-28"
+                className="object-contain w-24 h-24 p-1 mt-2 border border-teal-200 rounded-lg"
               />
             )}
           </div>
 
           <button
             type="submit"
-            className="w-full py-3 mt-2 text-lg font-semibold text-white bg-indigo-600 shadow-lg rounded-xl hover:bg-indigo-700"
+            className="w-full py-3 mt-2 text-lg font-semibold text-white transition bg-teal-500 shadow-md rounded-xl hover:bg-teal-600"
           >
             Register Admin
           </button>
 
-          <p className="mt-4 text-sm text-center text-gray-500">
+          <p className="mt-4 text-sm text-center text-teal-600">
             Already have an account?{" "}
             <span
               onClick={() => navigate("/login")}
-              className="text-indigo-600 cursor-pointer hover:underline"
+              className="text-teal-600 cursor-pointer hover:underline"
             >
               Login here
             </span>
           </p>
         </form>
 
-        {/* Autofill Fix */}
         <style>{`
           input:-webkit-autofill {
-            background-color: #f9fafb !important;
-            -webkit-box-shadow: 0 0 0 1000px #f9fafb inset !important;
-            box-shadow: 0 0 0 1000px #f9fafb inset !important;
+            background-color: #f0fdfa !important;
+            -webkit-box-shadow: 0 0 0 1000px #f0fdfa inset !important;
+            box-shadow: 0 0 0 1000px #f0fdfa inset !important;
             color: #000 !important;
           }
         `}</style>
-
       </div>
     </div>
   );
