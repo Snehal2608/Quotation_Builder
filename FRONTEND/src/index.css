@@ -6,4 +6,6 @@ body {
   @apply text-black bg-gray-100;
   margin: 0;
   padding: 0;
+}::-webkit-scrollbar {
+  width: 4px;
 }

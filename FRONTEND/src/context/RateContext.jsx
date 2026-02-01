@@ -10,8 +10,6 @@ export const RateProvider = ({ children }) => {
   const [rates, setRates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  // ✅ SAFE FIX: Avoid direct destructuring to prevent crash
   const auth = useAuth();
   const isAuthenticated = auth?.isAuthenticated;
 
@@ -51,7 +49,7 @@ export const RateProvider = ({ children }) => {
     }
   };
 
-  // ✅ NEW: Reliable reload logic for login/logout
+  
   useEffect(() => {
     if (!isAuthenticated) {
       setRates([]);

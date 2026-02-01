@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 // Components & Layout
 import Header from "./components/Header";
-import Notify from "./components/Notification";
 
 // Pages
 import Landing from "./pages/Landing";
@@ -24,7 +23,6 @@ import VerifyEmail from "./pages/VerifyEmail";
 
 // Context Providers
 import { AuthProvider } from "./context/AuthContext";
-import { RateProvider } from "./context/RateContext";
 import { QuoteProvider } from "./context/QuoteContext";
 
 // --- HELPERS ---
@@ -39,8 +37,6 @@ const getRole = () => {
 };
 
 function App() {
-  const [notify, setNotify] = useState(null);
-
   const PrivateRoute = ({ children, requiredRole }) => {
     const token = localStorage.getItem("token");
     const userRole = getRole();
@@ -56,125 +52,113 @@ function App() {
     return children;
   };
 
-  // ✅ FIX: SAME bg-gray-100 for header + page (NO WHITE STRIP)
+  // ✅ SAME bg-gray-100 for header + page (NO WHITE STRIP)
   const WithHeader = ({ children }) => (
     <div className="min-h-screen bg-gray-100">
       <Header />
-      <main className="pt-6 bg-gray-100">
-        {children}
-      </main>
+      <main className="pt-6 bg-gray-100">{children}</main>
     </div>
   );
 
   return (
     <AuthProvider>
-      <RateProvider>
-        <QuoteProvider>
-          {notify && (
-            <Notify
-              type={notify.type}
-              message={notify.message}
-              onClose={() => setNotify(null)}
+      <QuoteProvider>
+        <Router>
+          <Routes>
+            {/* PUBLIC */}
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/logout" element={<Logout />} />
+
+            {/* RECOVERY */}
+            <Route path="/verify-email/:userId/:choice" element={<VerifyEmail />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/verify-otp" element={<VerifyOtp />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+
+            {/* ADMIN */}
+            <Route
+              path="/admin"
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <WithHeader>
+                    <Admin />
+                  </WithHeader>
+                </PrivateRoute>
+              }
             />
-          )}
 
-          <Router>
-            <Routes>
-              {/* PUBLIC */}
-              <Route path="/" element={<Landing />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/logout" element={<Logout />} />
+            <Route
+              path="/admin/add-user"
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <AddUser />
+                </PrivateRoute>
+              }
+            />
 
-              {/* RECOVERY */}
-              <Route path="/verify-email/:userId/:choice" element={<VerifyEmail />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/verify-otp" element={<VerifyOtp />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
+            <Route
+              path="/admin/edit/:id"
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <WithHeader>
+                    <EditUser />
+                  </WithHeader>
+                </PrivateRoute>
+              }
+            />
 
-              {/* ADMIN */}
-              <Route
-                path="/admin"
-                element={
-                  <PrivateRoute requiredRole="admin">
-                    <WithHeader>
-                      <Admin />
-                    </WithHeader>
-                  </PrivateRoute>
-                }
-              />
+            <Route
+              path="/admin/messages"
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <WithHeader>
+                    <AdminMessages />
+                  </WithHeader>
+                </PrivateRoute>
+              }
+            />
 
-              <Route
-                path="/admin/add-user"
-                element={
-                  <PrivateRoute requiredRole="admin">
-                    <AddUser />
-                  </PrivateRoute>
-                }
-              />
+            <Route
+              path="/admin/quotations"
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <WithHeader>
+                    <AdminQuotationNotifications />
+                  </WithHeader>
+                </PrivateRoute>
+              }
+            />
 
-              <Route
-                path="/admin/edit/:id"
-                element={
-                  <PrivateRoute requiredRole="admin">
-                    <WithHeader>
-                      <EditUser />
-                    </WithHeader>
-                  </PrivateRoute>
-                }
-              />
+            <Route
+              path="/admin/manage-rates"
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <WithHeader>
+                    <ManageRates />
+                  </WithHeader>
+                </PrivateRoute>
+              }
+            />
 
-              <Route
-                path="/admin/messages"
-                element={
-                  <PrivateRoute requiredRole="admin">
-                    <WithHeader>
-                      <AdminMessages />
-                    </WithHeader>
-                  </PrivateRoute>
-                }
-              />
+            {/* USER */}
+            <Route
+              path="/generate-quotation"
+              element={
+                <PrivateRoute>
+                  <WithHeader>
+                    <GenerateQuotation />
+                  </WithHeader>
+                </PrivateRoute>
+              }
+            />
 
-              <Route
-                path="/admin/quotations"
-                element={
-                  <PrivateRoute requiredRole="admin">
-                    <WithHeader>
-                      <AdminQuotationNotifications />
-                    </WithHeader>
-                  </PrivateRoute>
-                }
-              />
-
-              <Route
-                path="/admin/manage-rates"
-                element={
-                  <PrivateRoute requiredRole="admin">
-                    <WithHeader>
-                      <ManageRates />
-                    </WithHeader>
-                  </PrivateRoute>
-                }
-              />
-
-              {/* USER */}
-              <Route
-                path="/generate-quotation"
-                element={
-                  <PrivateRoute>
-                    <WithHeader>
-                      <GenerateQuotation />
-                    </WithHeader>
-                  </PrivateRoute>
-                }
-              />
-
-              {/* FALLBACK */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Router>
-        </QuoteProvider>
-      </RateProvider>
+            {/* FALLBACK */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Router>
+      </QuoteProvider>
     </AuthProvider>
   );
 }

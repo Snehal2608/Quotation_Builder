@@ -98,7 +98,7 @@ const AddUser = () => {
       <div className="flex items-start justify-center min-h-[90vh] px-6 pt-12">
         <div className="w-full max-w-lg p-10 bg-white border border-gray-200 rounded-3xl">
 
-          {/* ✅ NEW BACK BUTTON (SAME STYLE AS REQUESTED) */}
+          
           <button
             onClick={() => navigate("/admin")}
             className="flex items-center gap-2 px-5 py-2.5 mb-8 font-bold text-teal-900 transition border border-gray-200 bg-gray-50 rounded-2xl hover:bg-gray-100 shadow-sm"

@@ -5,8 +5,6 @@ import { useNavigate } from "react-router-dom";
 import { useRates } from "../context/RateContext";
 import { fileToBase64 } from "../utils/fileToBase64";
 
-const MAX_DESCRIPTION_LENGTH = 50;
-
 const ManageRates = () => {
   const { rates, fetchRates } = useRates();
 
@@ -185,22 +183,11 @@ const ManageRates = () => {
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-bold text-gray-600">Description</label>
-              <span
-                className={`text-[10px] font-bold ${
-                  description.length === MAX_DESCRIPTION_LENGTH ? "text-red-500" : "text-gray-400"
-                }`}
-              >
-                {description.length}/{MAX_DESCRIPTION_LENGTH}
-              </span>
             </div>
             <textarea
-              placeholder="Short detail (max 50 chars)..."
+              placeholder="Enter item description..."
               value={description}
-              onChange={(e) => {
-                if (e.target.value.length <= MAX_DESCRIPTION_LENGTH) {
-                  setDescription(e.target.value);
-                }
-              }}
+              onChange={(e) => setDescription(e.target.value)}
               rows={2}
               className="w-full p-3 border border-gray-200 outline-none resize-none rounded-xl focus:ring-2 focus:ring-teal-800"
             />
@@ -261,7 +248,21 @@ const ManageRates = () => {
 
               <h3 className="pr-6 text-xl font-bold text-teal-900 truncate">{item.itemName}</h3>
 
-              <p className="mt-2 text-sm text-gray-500 line-clamp-2 min-h-[2.5rem]">
+              <p
+                className="
+                  mt-2
+                  text-sm
+                  leading-relaxed
+                  text-gray-500
+                  min-h-[3.8rem]
+                  max-h-[3.8rem]
+                  overflow-y-auto
+                  pr-[2px]
+                  scrollbar-thin
+                  scrollbar-thumb-gray-400
+                  scrollbar-track-transparent
+                "
+              >
                 {item.description}
               </p>
 
