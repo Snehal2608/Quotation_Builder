@@ -23,12 +23,10 @@ const ManageRates = () => {
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
-
     if (!user || user.role !== "admin") {
       navigate("/generate-quotation");
       return;
     }
-
     fetchRates();
   }, [fetchRates, navigate]);
 
@@ -53,41 +51,48 @@ const ManageRates = () => {
       return;
     }
 
+    // ✅ THE CONSOLE GUARD: Prevents Axios from ever running if image is too large
+    // 7MB is the safe limit because Base64 expands the size by ~33%
+    if (image && image.size > 7 * 1024 * 1024) {
+      setError("Image exceeds the 7MB limit. Please upload a smaller file.");
+      clearMessages();
+      return; 
+    }
+
     try {
       const token = localStorage.getItem("token");
-
       let imageBase64 = null;
+      
       if (image) {
         imageBase64 = await fileToBase64(image);
       }
 
-      await axios.post(
-        "http://localhost:5000/api/rates",
-        {
-          itemName,
-          rate: rateValue,
-          description: description || "",
-          imageBase64,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      await axios.post("http://localhost:5000/api/rates", {
+        itemName,
+        rate: rateValue,
+        description: description || "",
+        imageBase64,
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       setSuccess("Rate saved successfully.");
       await fetchRates();
 
+      // Reset form
       setItemName("");
       setRate("");
       setDescription("");
       setImage(null);
     } catch (err) {
-      setError("Error saving rate.");
+      // Catch genuine server errors
+      if (err.response?.status === 413) {
+        setError("The server rejected the file. Please use a much smaller image.");
+      } else {
+        setError("Error saving rate.");
+      }
+      clearMessages();
     }
-
-    clearMessages();
   };
 
   const handleDelete = async (id, name) => {
@@ -96,7 +101,6 @@ const ManageRates = () => {
       await axios.delete(`http://localhost:5000/api/rates/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       setSuccess(`Rate for ${name} deleted successfully.`);
       await fetchRates();
       clearMessages();
@@ -116,16 +120,11 @@ const ManageRates = () => {
     try {
       const token = localStorage.getItem("token");
       const currentItem = rates.find((r) => r._id === id);
-
-      await axios.put(
-        `http://localhost:5000/api/rates/${id}`,
-        {
-          itemName: currentItem.itemName,
-          rate: rateValue,
-          description: currentItem.description,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await axios.put(`http://localhost:5000/api/rates/${id}`, {
+        itemName: currentItem.itemName,
+        rate: rateValue,
+        description: currentItem.description,
+      }, { headers: { Authorization: `Bearer ${token}` } });
 
       setEditingItem(null);
       setNewRate("");
@@ -141,11 +140,7 @@ const ManageRates = () => {
     <div className="flex items-start justify-center min-h-screen py-8 bg-gray-100">
       <div className="w-full max-w-6xl p-6 bg-white shadow-xl rounded-[2.5rem] md:p-10">
         {(error || success) && (
-          <div
-            className={`mb-6 p-4 rounded-xl font-bold text-center ${
-              error ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600"
-            }`}
-          >
+          <div className={`mb-6 p-4 rounded-xl font-bold text-center ${error ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600"}`}>
             {error || success}
           </div>
         )}
@@ -181,9 +176,7 @@ const ManageRates = () => {
           </div>
 
           <div className="mt-4">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-bold text-gray-600">Description</label>
-            </div>
+            <label className="text-sm font-bold text-gray-600">Description</label>
             <textarea
               placeholder="Enter item description..."
               value={description}
@@ -198,7 +191,22 @@ const ManageRates = () => {
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => setImage(e.target.files[0])}
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    // 7MB strict limit to prevent console errors
+                    const maxSizeBytes = 7 * 1024 * 1024;
+                    if (file.size > maxSizeBytes) {
+                      setError("File is too large! Please select an image under 7MB.");
+                      setImage(null);
+                      e.target.value = null; // Clears the file from the input
+                      clearMessages();
+                    } else {
+                      setError(null);
+                      setImage(file);
+                    }
+                  }
+                }}
                 className="hidden"
               />
               <span className="inline-flex items-center justify-center px-6 py-3 font-bold text-white transition-all bg-teal-900 shadow-md cursor-pointer rounded-xl hover:bg-teal-800">
@@ -223,82 +231,33 @@ const ManageRates = () => {
           </div>
         </div>
 
+        {/* Display List of Rates */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {rates.map((item) => (
-            <div
-              key={item._id}
-              className="relative p-6 bg-white border border-gray-100 shadow-md rounded-[1.5rem] hover:shadow-lg transition-shadow overflow-hidden"
-            >
+            <div key={item._id} className="relative p-6 bg-white border border-gray-100 shadow-md rounded-[1.5rem] hover:shadow-lg transition-shadow overflow-hidden">
               {item.image && (
                 <div className="w-full h-32 mb-4 overflow-hidden rounded-xl bg-gray-50">
-                  <img
-                    src={item.image}
-                    alt={item.itemName}
-                    className="object-contain w-full h-full"
-                  />
+                  <img src={item.image} alt={item.itemName} className="object-contain w-full h-full" />
                 </div>
               )}
-
-              <button
-                onClick={() => handleDelete(item._id, item.itemName)}
-                className="absolute p-1 text-red-500 transition-colors rounded-full shadow-sm top-4 right-4 hover:bg-red-50 bg-white/80"
-              >
+              <button onClick={() => handleDelete(item._id, item.itemName)} className="absolute p-1 text-red-500 transition-colors rounded-full shadow-sm top-4 right-4 hover:bg-red-50 bg-white/80">
                 <Trash2 size={18} />
               </button>
-
               <h3 className="pr-6 text-xl font-bold text-teal-900 truncate">{item.itemName}</h3>
-
-              <p
-                className="
-                  mt-2
-                  text-sm
-                  leading-relaxed
-                  text-gray-500
-                  min-h-[3.8rem]
-                  max-h-[3.8rem]
-                  overflow-y-auto
-                  pr-[2px]
-                  scrollbar-thin
-                  scrollbar-thumb-gray-400
-                  scrollbar-track-transparent
-                "
-              >
+              <p className="mt-2 text-sm leading-relaxed text-gray-500 min-h-[3.8rem] max-h-[3.8rem] overflow-y-auto pr-[2px] scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent">
                 {item.description}
               </p>
-
               {editingItem === item._id ? (
                 <div className="flex items-center gap-2 mt-4">
-                  <input
-                    type="number"
-                    value={newRate}
-                    onChange={(e) => setNewRate(e.target.value)}
-                    className="w-24 p-2 border border-teal-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-800"
-                  />
-                  <button
-                    onClick={() => handleEditSave(item._id, item.itemName)}
-                    className="px-3 py-1 font-bold text-white bg-teal-900 rounded-lg hover:bg-teal-800"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={() => setEditingItem(null)}
-                    className="px-3 py-1 font-bold text-gray-500 bg-gray-100 rounded-lg hover:bg-gray-200"
-                  >
-                    <X size={16} />
-                  </button>
+                  <input type="number" value={newRate} onChange={(e) => setNewRate(e.target.value)} className="w-24 p-2 border border-teal-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-800" />
+                  <button onClick={() => handleEditSave(item._id, item.itemName)} className="px-3 py-1 font-bold text-white bg-teal-900 rounded-lg hover:bg-teal-800">Save</button>
+                  <button onClick={() => setEditingItem(null)} className="px-3 py-1 font-bold text-gray-500 bg-gray-100 rounded-lg hover:bg-gray-200"><X size={16} /></button>
                 </div>
               ) : (
                 <div className="flex items-center justify-between mt-6">
                   <span className="text-xl font-black text-teal-600">₹{item.rate}</span>
-                  <button
-                    onClick={() => {
-                      setEditingItem(item._id);
-                      setNewRate(item.rate);
-                    }}
-                    className="flex items-center px-4 py-2 text-sm font-bold text-white transition-all bg-teal-900 rounded-xl hover:bg-teal-800"
-                  >
-                    <Edit3 size={14} className="mr-2" />
-                    Edit
+                  <button onClick={() => { setEditingItem(item._id); setNewRate(item.rate); }} className="flex items-center px-4 py-2 text-sm font-bold text-white transition-all bg-teal-900 rounded-xl hover:bg-teal-800">
+                    <Edit3 size={14} className="mr-2" /> Edit
                   </button>
                 </div>
               )}

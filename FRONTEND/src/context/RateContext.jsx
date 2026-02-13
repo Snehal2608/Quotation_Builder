@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { useAuth } from "./AuthContext";
 
@@ -13,7 +13,8 @@ export const RateProvider = ({ children }) => {
   const auth = useAuth();
   const isAuthenticated = auth?.isAuthenticated;
 
-  const fetchRates = async () => {
+  // useCallback ensures the function reference doesn't change on every render
+  const fetchRates = useCallback(async () => {
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -47,9 +48,9 @@ export const RateProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // Empty array means this function is created only once on mount
 
-  
+  // Automatically fetch rates when authentication status changes
   useEffect(() => {
     if (!isAuthenticated) {
       setRates([]);
@@ -58,7 +59,7 @@ export const RateProvider = ({ children }) => {
     }
 
     fetchRates();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchRates]); // Added fetchRates as a stable dependency
 
   return (
     <RateContext.Provider
