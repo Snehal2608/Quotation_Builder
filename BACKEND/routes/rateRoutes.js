@@ -41,10 +41,10 @@ router.post(
 );
 
 /* GET ALL RATES */
+// TEMPORARY TEST: This will show ALL rates to EVERYONE
 router.get("/", verifyToken, async (req, res) => {
   try {
-    const adminId = req.user.role === "admin" ? req.user._id : req.user.adminId;
-    const rates = await Rate.find({ adminId });
+    const rates = await Rate.find({}); // Remove the { adminId } filter
     res.json(rates);
   } catch (err) {
     res.status(500).json({ message: "Error fetching rates" });

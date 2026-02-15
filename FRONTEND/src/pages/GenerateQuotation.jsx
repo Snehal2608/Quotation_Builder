@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { PlusCircle, Calculator, Download, RefreshCw, AlertCircle } from "lucide-react";
+import { PlusCircle, Calculator, Download, RefreshCw, AlertCircle, X } from "lucide-react";
 import { useRates } from "../context/RateContext";
 import { useQuote } from "../context/QuoteContext";
 import Select from "react-select";
@@ -10,7 +10,6 @@ import Notification from "../components/Notification";
 const imageToBase64 = async (imageData) => {
   if (!imageData) return null;
   if (imageData.startsWith("data:image")) return imageData;
-
   try {
     const response = await fetch(imageData);
     const blob = await response.blob();
@@ -26,25 +25,15 @@ const imageToBase64 = async (imageData) => {
 };
 
 const CustomOption = ({ data, innerRef, innerProps }) => (
-  <div
-    ref={innerRef}
-    {...innerProps}
-    className="flex gap-3 p-2 cursor-pointer hover:bg-gray-50"
-  >
+  <div ref={innerRef} {...innerProps} className="flex gap-3 p-2 cursor-pointer hover:bg-gray-50">
     {data.image ? (
-      <img
-        src={data.image}
-        alt={data.label}
-        className="object-contain w-12 h-10 rounded"
-      />
+      <img src={data.image} alt={data.label} className="object-contain w-12 h-10 rounded" />
     ) : (
       <div className="w-12 h-10 bg-gray-200 rounded" />
     )}
     <div>
       <div className="font-semibold text-teal-900">{data.label}</div>
-      {data.description && (
-        <div className="text-xs text-gray-500">{data.description}</div>
-      )}
+      {data.description && <div className="text-xs text-gray-500">{data.description}</div>}
     </div>
   </div>
 );
@@ -52,17 +41,11 @@ const CustomOption = ({ data, innerRef, innerProps }) => (
 const CustomSingleValue = ({ data }) => (
   <div className="flex items-center gap-2 leading-none">
     {data.image ? (
-      <img
-        src={data.image}
-        alt={data.label}
-        className="object-contain w-6 h-6 bg-white border rounded"
-      />
+      <img src={data.image} alt={data.label} className="object-contain w-6 h-6 bg-white border rounded" />
     ) : (
       <div className="w-6 h-6 bg-gray-200 rounded" />
     )}
-    <span className="text-sm font-medium leading-none text-gray-700">
-      {data.label}
-    </span>
+    <span className="text-sm font-medium text-gray-700">{data.label}</span>
   </div>
 );
 
@@ -70,36 +53,15 @@ const ResultItemLayout = ({ item }) => (
   <div className="flex items-start gap-3 py-2">
     {item.image && (
       <div className="flex-shrink-0 mt-1">
-        <img
-          src={item.image}
-          alt={item.name}
-          className="object-contain w-10 h-8 bg-white border rounded shadow-sm"
-        />
+        <img src={item.image} alt={item.name} className="object-contain w-10 h-8 bg-white border rounded shadow-sm" />
       </div>
     )}
     <div className="flex flex-col min-w-0">
       <span className="block text-sm font-bold leading-tight text-teal-900 uppercase truncate">
         {item.name}
       </span>
-      {item.description && (
-        <span className="text-[10px] text-gray-400 leading-tight mt-0.5 block truncate max-w-[200px]">
-          {item.description}
-        </span>
-      )}
       {item.customDescription && (
-        <p
-          className="
-            mt-1
-            text-[11px]
-            leading-relaxed
-            text-gray-600
-            break-all
-            overflow-hidden
-            line-clamp-2
-            max-w-[260px]
-          "
-          title={item.customDescription}
-        >
+        <p className="mt-1 text-[11px] text-gray-600 line-clamp-2" title={item.customDescription}>
           {item.customDescription}
         </p>
       )}
@@ -108,577 +70,228 @@ const ResultItemLayout = ({ item }) => (
 );
 
 const GenerateQuotation = () => {
-  const { rates } = useRates();
+  const { rates, fetchRates } = useRates();
   const { quoteItems, addItem, resetQuote } = useQuote();
 
   const [discountInput, setDiscountInput] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState(0);
-
-  const [inputData, setInputData] = useState({
-    item: "",
-    length: 0.0,
-    height: 0.0,
-    description: "",
-  });
-
+  const [inputData, setInputData] = useState({ item: "", length: "", height: "", description: "" });
   const [adminLogo, setAdminLogo] = useState(null);
-  const [adminName, setAdminName] = useState("Admin");
-  const [showComplaintModal, setShowComplaintModal] = useState(false);
-  const [complaint, setComplaint] = useState({ category: "Price Issue", title: "", message: "" });
-  const [myMessages, setMyMessages] = useState([]);
-  const [showMyMessages, setShowMyMessages] = useState(false);
   const [notify, setNotify] = useState({ type: "", message: "" });
 
-  const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user") || "null");
 
+  // SYNC FIX: Auto-fetch new items from admin every 5 seconds
   useEffect(() => {
-    resetQuote();
-  }, [user?.role]);
+    fetchRates();
+    const interval = setInterval(() => fetchRates(), 5000);
+    return () => clearInterval(interval);
+  }, [fetchRates]);
 
   useEffect(() => {
-    document.body.className = "bg-gray-100";
-    document.body.style.overflow = "auto";
-    document.documentElement.style.overflow = "auto";
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    if (user.role === "admin") {
-      setAdminName(user.name || "Admin");
+    if (user?.role === "admin") {
       if (user.logoUrl || user.logoBase64) setAdminLogo(user.logoUrl || user.logoBase64);
-    } else if (user.role === "user" && user.adminId) {
-      fetch(`http://localhost:5000/api/auth/admin-logo/${user.adminId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.logoUrl || data.logoBase64) setAdminLogo(data.logoUrl || data.logoBase64);
-          if (data.name) setAdminName(data.name);
-        })
-        .catch(() => { });
+    } else if (user?.adminId) {
+      axios.get(`http://localhost:5000/api/auth/admin-logo/${user.adminId}`)
+        .then(res => setAdminLogo(res.data.logoBase64 || res.data.logoUrl))
+        .catch(() => {});
     }
-  }, []);
+  }, [user]);
 
-  const fetchMyMessages = async () => {
-    try {
-      if (!token) return;
-      const res = await axios.get("http://localhost:5000/api/messages/my-messages", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const userOnlyMessages = (res.data || []).filter((msg) => msg.type === "complaint");
-      setMyMessages(userOnlyMessages);
-    } catch (err) {
-      console.error("Fetch my messages error:", err);
-      setMyMessages([]);
-    }
-  };
-
-  useEffect(() => { fetchMyMessages(); }, []);
-
-  const handleAddItem = async (e) => {
+  const handleAddItem = (e) => {
     e.preventDefault();
-    if (!inputData.item || inputData.length <= 0 || inputData.height <= 0) {
-      setNotify({ type: "error", message: "Please select an item and enter valid dimensions." });
+    const l = parseFloat(inputData.length);
+    const h = parseFloat(inputData.height);
+
+    if (!inputData.item || isNaN(l) || isNaN(h) || l <= 0 || h <= 0) {
+      setNotify({ type: "error", message: "Select item and enter valid dimensions." });
       return;
     }
 
-    const rateItem = rates.find((r) => r.itemName === inputData.item);
-    const costValue = inputData.length * inputData.height * (rateItem?.rate || 0);
+    const rateItem = rates.find(r => r.itemName === inputData.item);
+    const costValue = l * h * (rateItem?.rate || 0);
 
     addItem({
       id: Date.now(),
       name: inputData.item,
-      length: inputData.length.toFixed(1),
-      height: inputData.height.toFixed(1),
+      length: l.toFixed(1),
+      height: h.toFixed(1),
       rate: rateItem?.rate || 0,
       cost: Number(costValue),
-      description: rateItem?.description || "",
-      customDescription: inputData.description || "",
-      image: rateItem?.imageBase64 || rateItem?.image || null,
+      image: rateItem?.imageBase64 || rateItem?.image,
+      customDescription: inputData.description
     });
 
-    if (user?.role === "user") {
-      try {
-        await axios.post(
-          "http://localhost:5000/api/messages/quotation-notify",
-          {
-            items: [{
-              name: inputData.item,
-              length: inputData.length,
-              height: inputData.height,
-              rate: rateItem?.rate || 0,
-              total: costValue,
-            }],
-            grandTotal: costValue,
-          },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      } catch (err) {
-        console.error("Notification error:", err);
-      }
-    }
-    setInputData({ item: "", length: 0.0, height: 0.0, description: "" });
+    setInputData({ item: "", length: "", height: "", description: "" });
   };
 
-  const handleResetQuoteList = () => {
-    resetQuote();
-    setAppliedDiscount(0);
-    setDiscountInput("");
-  };
-
-  const totalCost = quoteItems.reduce((sum, item) => sum + Number(item.cost), 0);
+  const totalCost = quoteItems.reduce((sum, item) => sum + item.cost, 0);
   const discountedTotal = Math.max(totalCost - appliedDiscount, 0);
 
   const applyDiscount = () => {
-    const percent = Number(discountInput);
-    if (isNaN(percent) || percent < 0) {
-      setNotify({ type: "error", message: "Invalid discount percentage" });
-      return;
-    }
-    if (user?.role === "user" && percent > 10) {
-      setNotify({ type: "error", message: "Maximum discount allowed for users is 10%" });
-      return;
-    }
-    const discountAmount = (totalCost * percent) / 100;
-    setAppliedDiscount(discountAmount);
-  };
-
-  const itemOptions = rates.map((r) => ({
-    value: r.itemName,
-    label: `${r.itemName} (Rs.${r.rate}/sq.ft)`,
-    description: r.description,
-    image: r.imageBase64 || r.image,
-  }));
-
-  const selectedOption = itemOptions.find((opt) => opt.value === inputData.item) || null;
-
-  const openComplaintModal = () => {
-    setComplaint({ category: "Price Issue", title: "", message: "" });
-    setShowComplaintModal(true);
-  };
-
-  const submitComplaint = async (e) => {
-    e.preventDefault();
-    try {
-      if (!complaint.title || !complaint.message) {
-        setNotify({ type: "error", message: "Please add both title and message." });
-        return;
-      }
-      await axios.post("http://localhost:5000/api/messages/send", complaint, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setNotify({ type: "success", message: "Complaint sent to admin" });
-      setShowComplaintModal(false);
-      fetchMyMessages();
-    } catch (err) {
-      setNotify({ type: "error", message: err.response?.data?.message || "Failed to send complaint" });
-    }
+    const percent = parseFloat(discountInput) || 0;
+    if (percent < 0) return;
+    setAppliedDiscount((totalCost * percent) / 100);
   };
 
   const handleDownloadReceipt = async () => {
-    if (!quoteItems.length) {
-      setNotify({ type: "error", message: "No items to download." });
-      return;
-    }
-
+    if (!quoteItems.length) return;
     const doc = new jsPDF("p", "pt", "a4");
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 40;
-    const bottomMargin = 120;
-    const headerY = 50;
-
-    const drawFooter = () => {
-      const footerY = pageHeight - 50;
-      doc.setDrawColor(220);
-      doc.setLineWidth(0.5);
-      doc.line(40, footerY, pageWidth - 40, footerY);
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(120);
-      doc.text("Thank you for your business!", pageWidth / 2, footerY + 20, { align: "center" });
-    };
-
-    let adminLogo64 = null;
-    if (adminLogo) adminLogo64 = await imageToBase64(adminLogo);
-
-    if (adminLogo64) {
-      const logoSize = 50;
-      const format = adminLogo64.includes("png") ? "PNG" : "JPEG";
-      doc.addImage(adminLogo64, format, margin, headerY, logoSize, logoSize);
-    }
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(0);
-    doc.text(`Date: ${new Date().toLocaleDateString("en-IN")}`, pageWidth - margin, headerY + 30, { align: "right" });
-
-    // --- TABLE HEADER ---
     let startY = 130;
-    doc.setDrawColor(200);
-    doc.setLineWidth(1);
-    doc.line(margin, startY, pageWidth - margin, startY); // Top Line
-    
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(50);
-    doc.text("ITEM / DESCRIPTION", margin + 70, startY + 15);
-    doc.text("DIMENSIONS", pageWidth - 180, startY + 15, { align: "center" });
-    doc.text("RATE/COST", pageWidth - margin, startY + 15, { align: "right" });
-    
-    startY += 25;
-    doc.line(margin, startY, pageWidth - margin, startY); // Bottom Line of Header
-    startY += 20;
 
-    const imageSize = 55;
-    const leftX = margin;
-    const textX = margin + imageSize + 15;
-    const rightX = pageWidth - margin;
+    let logo64 = await imageToBase64(adminLogo);
+    if (logo64) doc.addImage(logo64, "PNG", margin, 50, 50, 50);
+    doc.setFontSize(10).text(`Date: ${new Date().toLocaleDateString("en-IN")}`, pageWidth - margin, 80, { align: "right" });
+
+    doc.setDrawColor(200).line(margin, startY, pageWidth - margin, startY);
+    doc.setFont("helvetica", "bold").text("ITEM / DESCRIPTION", margin + 70, startY + 15);
+    doc.text("DIMENSIONS", pageWidth - 180, startY + 15, { align: "center" });
+    doc.text("COST", pageWidth - margin, startY + 15, { align: "right" });
+    startY += 25;
+    doc.line(margin, startY, pageWidth - margin, startY);
+    startY += 30;
 
     for (const item of quoteItems) {
-      const baseDescription = item.description?.trim() || "";
-      const customDescription = item.customDescription?.trim() || "";
-      let descriptionLines = [];
-      if (baseDescription) descriptionLines.push(baseDescription);
-      if (customDescription) descriptionLines.push(customDescription);
-
-      const wrappedText = doc.splitTextToSize(descriptionLines.join("\n\n"), 240); // Adjusted width
-      const descriptionHeight = wrappedText.length * 16; 
-      const itemTotalHeight = Math.max(imageSize, descriptionHeight + 40) + 20;
-
-      if (startY + itemTotalHeight > pageHeight - bottomMargin) {
-        drawFooter();
-        doc.addPage();
-        startY = 60;
-      }
-
-      // Vertical separator line per item
-      doc.setDrawColor(235);
-      doc.setLineWidth(0.5);
-      doc.line(textX - 8, startY, textX - 8, startY + itemTotalHeight - 10);
-
-      const img = item.image ? await imageToBase64(item.image) : null;
-      if (img) {
-        doc.addImage(img, img.includes("png") ? "PNG" : "JPEG", leftX, startY, imageSize, imageSize);
-      }
-
-      // Item Name
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0);
-      doc.text(item.name.toUpperCase(), textX, startY + 12);
-
-      // Description
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(80);
-      doc.text(wrappedText, textX, startY + 28);
-
-      // Dimensions
-      doc.setFontSize(10);
-      doc.setTextColor(60);
-      doc.text(`${item.length} x ${item.height} ft`, pageWidth - 180, startY + 12, { align: "center" });
-
-      // Cost
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0);
-      doc.text(`Rs. ${Number(item.cost).toLocaleString("en-IN")}`, rightX, startY + 12, { align: "right" });
-
-      startY += itemTotalHeight;
+      if (startY + 100 > pageHeight - 120) { doc.addPage(); startY = 60; }
+      const img = await imageToBase64(item.image);
+      if (img) doc.addImage(img, "PNG", margin, startY, 55, 55);
+      
+      doc.setDrawColor(235).line(margin + 65, startY, margin + 65, startY + 55);
+      doc.setFontSize(11).setFont("helvetica", "bold").setTextColor(0).text(item.name.toUpperCase(), margin + 75, startY + 12);
+      doc.setFontSize(10).setFont("helvetica", "normal").setTextColor(100).text(doc.splitTextToSize(item.customDescription || "", 200), margin + 75, startY + 28);
+      doc.setTextColor(0).text(`${item.length} x ${item.height} ft`, pageWidth - 180, startY + 12, { align: "center" });
+      doc.setFont("helvetica", "bold").text(`Rs. ${item.cost.toLocaleString()}`, pageWidth - margin, startY + 12, { align: "right" });
+      startY += 80;
     }
 
-    let currentY = startY + 10;
-    if (currentY + 120 > pageHeight - bottomMargin) {
-      drawFooter();
-      doc.addPage();
-      currentY = 60;
-    }
-
-    doc.setDrawColor(200);
-    doc.line(margin, currentY, pageWidth - margin, currentY);
-    currentY += 25;
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100);
-    doc.text("Subtotal:", rightX - 160, currentY);
-    doc.setTextColor(0);
-    doc.text(`Rs. ${totalCost.toLocaleString("en-IN")}`, rightX, currentY, { align: "right" });
-
+    if (startY + 150 > pageHeight) { doc.addPage(); startY = 60; }
+    doc.setDrawColor(200).line(margin, startY, pageWidth - margin, startY);
+    startY += 25;
+    doc.setFontSize(10).setFont("helvetica", "normal").text("Subtotal:", pageWidth - 150, startY);
+    doc.text(`Rs. ${totalCost.toLocaleString()}`, pageWidth - margin, startY, { align: "right" });
+    
     if (appliedDiscount > 0) {
-      currentY += 18;
-      doc.setTextColor(100);
-      doc.text(`Discount (${discountInput}%):`, rightX - 160, currentY);
-      doc.setTextColor(0);
-      doc.text(`- Rs. ${appliedDiscount.toLocaleString("en-IN")}`, rightX, currentY, { align: "right" });
+      startY += 20;
+      doc.text(`Discount (${discountInput}%):`, pageWidth - 150, startY);
+      doc.text(`- Rs. ${appliedDiscount.toLocaleString()}`, pageWidth - margin, startY, { align: "right" });
     }
 
-    doc.setDrawColor(200);
-    doc.line(rightX - 160, currentY + 10, rightX, currentY + 10);
+    startY += 30;
+    doc.setFontSize(12).setFont("helvetica", "bold").text("Final Total:", pageWidth - 150, startY);
+    doc.text(`Rs. ${discountedTotal.toLocaleString()}`, pageWidth - margin, startY, { align: "right" });
 
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("Final Total:", rightX - 160, currentY + 32);
-    doc.text(`Rs. ${discountedTotal.toLocaleString("en-IN")}`, rightX, currentY + 32, { align: "right" });
-
-    let signY = currentY + 80;
-    if (signY + 40 > pageHeight - 60) {
-      drawFooter();
-      doc.addPage();
-      signY = 80;
-    }
-
-    doc.setFontSize(10);
-    doc.setTextColor(0);
-    doc.text("Authorized Signature", margin, signY);
-    doc.setDrawColor(180);
-    doc.line(margin, signY + 25, margin + 160, signY + 25);
-    doc.setFontSize(9);
-    doc.setTextColor(120);
-    doc.text("Stamp / Signature", margin, signY + 40);
-
-    drawFooter();
+    doc.setFontSize(10).text("Authorized Signature", margin, startY + 60);
+    doc.line(margin, startY + 85, margin + 150, startY + 85);
     doc.save(`Quotation_${Date.now()}.pdf`);
-    setNotify({ type: "success", message: "PDF downloaded successfully!" });
   };
 
   return (
     <div className="flex items-start justify-center min-h-screen py-8 bg-gray-100">
       <div className="w-full max-w-6xl p-6 bg-white shadow-xl rounded-[2.5rem] md:p-10">
-        {notify.message && (
-          <Notification type={notify.type} message={notify.message} onClose={() => setNotify({ type: "", message: "" })} />
-        )}
+        {notify.message && <Notification type={notify.type} message={notify.message} onClose={() => setNotify({ type: "", message: "" })} />}
 
         <div className="flex flex-col justify-between mb-8 sm:flex-row sm:items-center">
-          <h2 className="text-4xl font-extrabold text-left text-teal-900">Generate Quotation</h2>
-          <div className="flex items-center gap-3 mt-4 sm:mt-0">
-            <button onClick={handleDownloadReceipt} className="flex items-center justify-center gap-2 px-6 py-2.5 text-white bg-teal-900 shadow-md rounded-xl hover:bg-teal-800 transition-all">
-              <Download size={18} /> Receipt PDF
-            </button>
-            {user?.role === "user" && (
-              <button onClick={openComplaintModal} className="flex items-center justify-center gap-2 px-6 py-2.5 text-white bg-teal-900 shadow-md rounded-xl hover:bg-teal-800 transition-all">
-                <AlertCircle size={18} className="mr-1" /> Report Issue
-              </button>
-            )}
-          </div>
+          <h2 className="text-4xl font-extrabold text-teal-900">Generate Quotation</h2>
+          <button onClick={handleDownloadReceipt} className="flex items-center gap-2 px-6 py-2.5 text-white bg-teal-900 shadow-md rounded-xl hover:bg-teal-800 transition-all">
+            <Download size={18} /> Receipt PDF
+          </button>
         </div>
 
-        <div className="grid items-stretch grid-cols-1 gap-12 lg:grid-cols-2">
-          {/* Input Panel */}
-          <div className="flex flex-col p-8 bg-white border border-gray-100 shadow-sm rounded-[2rem] hover:shadow-md transition-shadow">
-            <h3 className="flex items-center pb-4 mb-6 text-2xl font-bold text-teal-900 border-b border-gray-50">
-              <Calculator className="w-6 h-6 mr-2 text-teal-900" /> Calculation Input
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
+          {/* INPUT PANEL */}
+          <div className="p-8 bg-white border border-gray-100 shadow-sm rounded-[2rem]">
+            <h3 className="flex items-center pb-4 mb-6 text-2xl font-bold text-teal-900 border-b">
+              <Calculator className="mr-2" /> Calculation Input
             </h3>
-            <form onSubmit={handleAddItem} className="flex-grow">
-              <div className="mb-6">
+            <form onSubmit={handleAddItem} className="space-y-6">
+              <div>
                 <label className="block mb-2 text-sm font-bold text-gray-600">Select Item</label>
                 <Select
-                  options={itemOptions}
-                  value={selectedOption}
+                  options={rates.map(r => ({ value: r.itemName, label: `${r.itemName} (Rs.${r.rate}/sq.ft)`, image: r.imageBase64 || r.image, description: r.description }))}
+                  value={rates.find(r => r.itemName === inputData.item) ? { value: inputData.item, label: inputData.item } : null}
                   onChange={(s) => setInputData({ ...inputData, item: s ? s.value : "" })}
-                  placeholder="Choose item..."
                   components={{ Option: CustomOption, SingleValue: CustomSingleValue }}
-                  styles={{
-                    control: (base) => ({ ...base, minHeight: 52, borderRadius: 12, borderColor: "#e2e8f0", boxShadow: "none" }),
-                    valueContainer: (base) => ({ ...base, display: "flex", alignItems: "center", padding: "0 12px" }),
-                    singleValue: (base) => ({ ...base, display: "flex", alignItems: "center" }),
-                  }}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block mb-2 text-sm font-bold text-gray-600">Length (ft)</label>
-                  <div className="flex">
-                    <input type="number" value={inputData.length} onChange={(e) => setInputData({ ...inputData, length: parseFloat(e.target.value) || 0.0 })} step="0.1" min="0" className="w-full h-12 p-3 font-mono text-right border border-gray-200 outline-none rounded-l-xl focus:ring-1 focus:ring-teal-800" />
-                    <span className="flex items-center px-4 font-bold text-teal-900 border-r border-gray-200 bg-gray-50 border-y rounded-r-xl">ft</span>
-                  </div>
+                  <input type="number" step="0.1" value={inputData.length} onChange={(e) => setInputData({ ...inputData, length: e.target.value })} className="w-full p-3 border rounded-xl outline-none focus:ring-1 focus:ring-teal-800" />
                 </div>
                 <div>
                   <label className="block mb-2 text-sm font-bold text-gray-600">Height (ft)</label>
-                  <div className="flex">
-                    <input type="number" value={inputData.height} onChange={(e) => setInputData({ ...inputData, height: parseFloat(e.target.value) || 0.0 })} step="0.1" min="0" className="w-full h-12 p-3 font-mono text-right border border-gray-200 outline-none rounded-l-xl focus:ring-1 focus:ring-teal-800" />
-                    <span className="flex items-center px-4 font-bold text-teal-900 border-r border-gray-200 bg-gray-50 border-y rounded-r-xl">ft</span>
-                  </div>
+                  <input type="number" step="0.1" value={inputData.height} onChange={(e) => setInputData({ ...inputData, height: e.target.value })} className="w-full p-3 border rounded-xl outline-none focus:ring-1 focus:ring-teal-800" />
                 </div>
               </div>
-
-              <div className="mb-6">
-                <label className="block mb-2 text-sm font-bold text-gray-600">
-                  Item Description (Optional)
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Custom description for this quotation..."
-                  value={inputData.description}
-                  onChange={(e) => setInputData({ ...inputData, description: e.target.value })}
-                  className="w-full p-3 text-sm border border-gray-200 outline-none resize-none rounded-xl focus:ring-1 focus:ring-teal-800"
-                />
+              <div>
+                <label className="block mb-2 text-sm font-bold text-gray-600">Item Description (Optional)</label>
+                <textarea rows={2} value={inputData.description} onChange={(e) => setInputData({ ...inputData, description: e.target.value })} className="w-full p-3 border rounded-xl resize-none outline-none focus:ring-1 focus:ring-teal-800" placeholder="Enter custom notes..." />
               </div>
-
-              <div className="flex gap-4">
-                <button type="submit" className="flex items-center justify-center flex-1 gap-2 font-bold text-white transition-all bg-teal-900 shadow-lg hover:bg-teal-800 h-14 rounded-xl">
-                  <PlusCircle size={20} /> Add Item
-                </button>
-                <button type="button" onClick={() => setInputData({ item: "", length: 0.0, height: 0.0, description: "" })} className="px-6 font-semibold text-gray-500 transition-colors bg-gray-100 h-14 rounded-xl hover:bg-gray-200">Reset</button>
-              </div>
+              <button type="submit" className="w-full py-4 bg-teal-900 text-white font-bold rounded-xl shadow-lg hover:bg-teal-800 flex justify-center items-center gap-2">
+                <PlusCircle size={20} /> Add Item
+              </button>
             </form>
           </div>
 
-          {/* Live Preview Panel */}
-          <div className="flex flex-col p-8 border border-gray-50 shadow-lg bg-gray-50/50 rounded-[2rem]">
-            <h3 className="pb-4 mb-6 text-2xl font-bold text-teal-900 border-b border-gray-100">Live Calculation</h3>
-            <div className="flex-grow">
-              {quoteItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 text-center text-gray-400 border-2 border-gray-200 border-dashed bg-white/50 rounded-2xl">
-                  <Calculator size={40} className="mb-2 opacity-20" />
-                  <p>Your quotation is empty</p>
-                </div>
-              ) : (
-                <>
-                  <div className="mb-6 overflow-hidden bg-white border border-gray-100 shadow-sm rounded-2xl">
-                    <table className="min-w-full divide-y divide-gray-50">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-xs font-bold tracking-wider text-left text-teal-900 uppercase">Item</th>
-                          <th className="px-4 py-3 text-xs font-bold tracking-wider text-right text-teal-900 uppercase">Dimensions</th>
-                          <th className="px-4 py-3 text-xs font-bold tracking-wider text-right text-teal-900 uppercase">Cost</th>
+          {/* LIVE CALCULATION PANEL */}
+          <div className="p-8 border bg-gray-50/50 rounded-[2rem] shadow-lg">
+            <h3 className="pb-4 mb-6 text-2xl font-bold text-teal-900 border-b">Live Calculation</h3>
+            {quoteItems.length === 0 ? (
+              <div className="h-64 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed rounded-2xl">
+                <Calculator size={40} className="opacity-20 mb-2" />
+                <p>Your quotation is empty</p>
+              </div>
+            ) : (
+              <>
+                <div className="max-h-64 overflow-y-auto mb-6 bg-white rounded-2xl border">
+                  <table className="w-full divide-y">
+                    <thead className="bg-gray-50 text-[10px] uppercase font-bold text-teal-900">
+                      <tr>
+                        <th className="p-3 text-left">Item</th>
+                        <th className="p-3 text-right">Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {quoteItems.map(item => (
+                        <tr key={item.id}>
+                          <td className="p-3"><ResultItemLayout item={item} /></td>
+                          <td className="p-3 text-right font-bold text-gray-800">₹{item.cost.toLocaleString()}</td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {quoteItems.map((item) => (
-                          <tr key={item.id} className="transition-colors hover:bg-gray-50">
-                            <td className="px-4 py-2 align-middle"><ResultItemLayout item={item} /></td>
-                            <td className="px-4 py-2 font-mono text-xs text-right text-gray-500 align-middle">{item.length} × {item.height} ft</td>
-                            <td className="px-4 py-2 text-sm font-bold text-right text-gray-800 align-middle">₹{Number(item.cost).toLocaleString("en-IN")}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-                  <div className="flex items-center justify-between gap-3 mt-4">
-                    <input
-                      type="number"
-                      placeholder="Discount %"
-                      value={discountInput}
-                      onChange={(e) => setDiscountInput(e.target.value)}
-                      className="w-32 p-2 text-sm border border-gray-300 outline-none rounded-xl focus:ring-1 focus:ring-teal-800"
-                    />
-                    <button onClick={applyDiscount} className="px-4 py-2 text-sm font-semibold text-white transition-all bg-teal-900 hover:bg-teal-800 rounded-xl">Apply</button>
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <input type="number" placeholder="Discount %" value={discountInput} onChange={(e) => setDiscountInput(e.target.value)} className="w-full p-2 border rounded-xl text-sm outline-none" />
+                    <button onClick={applyDiscount} className="bg-teal-900 text-white px-4 py-2 rounded-xl text-sm font-bold">Apply</button>
                   </div>
 
                   {appliedDiscount > 0 && (
-                    <div className="flex justify-between mt-2 text-sm font-medium text-gray-800 ">
-                      <span>Discount ({discountInput}%)</span>
-                      <span>- ₹{appliedDiscount.toFixed(2)}</span>
+                    <div className="flex justify-between px-2 text-sm font-medium text-gray-600">
+                      <span>Subtotal:</span>
+                      <span>₹{totalCost.toLocaleString()}</span>
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between px-5 py-4 mt-4 text-white bg-teal-800 shadow-md rounded-xl">
-                    <span className="text-sm font-semibold tracking-wide uppercase opacity-90">Grand Total</span>
-                    <span className="text-2xl font-extrabold">₹{discountedTotal.toLocaleString("en-IN")}</span>
+                  <div className="bg-teal-800 text-white p-5 rounded-2xl shadow-md flex justify-between items-center">
+                    <span className="text-xs font-bold uppercase opacity-80">Grand Total</span>
+                    <span className="text-2xl font-black">₹{discountedTotal.toLocaleString()}</span>
                   </div>
-                </>
-              )}
-            </div>
-            <div className="mt-6">
-              <button onClick={handleResetQuoteList} disabled={quoteItems.length === 0} className={`w-full py-3 px-4 font-bold rounded-xl transition-all ${quoteItems.length === 0 ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-white text-gray-800 border border-red-100 hover:bg-red-50 shadow-sm"}`}>Reset Quote List</button>
-            </div>
-          </div>
-        </div>
-
-        {/* Message Inbox Section */}
-        {user?.role === "user" && (
-          <div className="pt-8 mt-12 border-t border-gray-100">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-teal-900">Communication History</h3>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setShowMyMessages((s) => !s);
-                    if (!showMyMessages) fetchMyMessages();
-                  }}
-                  className="px-5 py-2 text-sm font-bold text-white transition-all bg-teal-900 rounded-full shadow-md hover:bg-teal-800"
-                >
-                  {showMyMessages ? "Hide Inbox" : "View Messages"}
-                </button>
-                <button onClick={fetchMyMessages} className="p-2 text-gray-400 transition-colors hover:text-gray-800">
-                  <RefreshCw size={20} />
-                </button>
-              </div>
-            </div>
-
-            {showMyMessages && (
-              <div className="space-y-4">
-                {myMessages.length === 0 ? (
-                  <div className="p-10 text-center text-gray-400 border border-gray-200 border-dashed bg-gray-50 rounded-3xl">
-                    No messages found.
-                  </div>
-                ) : (
-                  myMessages.map((m) => (
-                    <div key={m._id} className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl">
-                      <div className="flex items-start justify-between mb-3">
-                        <span className="inline-block px-3 py-1 text-[10px] font-bold uppercase rounded-full bg-gray-100 text-gray-800">
-                          {m.category || "General"}
-                        </span>
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="text-[10px] text-gray-400 uppercase tracking-widest">
-                            {new Date(m.createdAt).toLocaleDateString()}
-                          </span>
-                          <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-gray-100 text-gray-800">
-                            {m.status === "unread" ? "Pending" : "Resolved"}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <p className="text-sm font-semibold text-teal-900">
-                          Subject: <span className="ml-1 font-normal text-gray-600">{m.title}</span>
-                        </p>
-                        <p className="mt-1 text-sm font-semibold text-teal-900">
-                          Description: <span className="ml-1 font-normal text-gray-600">{m.message}</span>
-                        </p>
-                      </div>
-                      {m.reply && (
-                        <div className="p-4 mt-4 border-l-4 border-gray-800 bg-gray-50 rounded-xl ">
-                          <span className="block mb-1 text-[10px] font-bold uppercase text-teal-900">Admin Reply</span>
-                          <p className="text-sm italic text-gray-800">"{m.reply}"</p>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
+                  
+                  <button onClick={() => { resetQuote(); setAppliedDiscount(0); setDiscountInput(""); }} className="w-full text-red-500 font-bold hover:bg-red-50 py-2 rounded-xl text-sm transition-colors">Reset List</button>
+                </div>
+              </>
             )}
           </div>
-        )}
-
-        {/* Report Issue Modal */}
-        {showComplaintModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
-            <div className="w-full max-w-md p-8 bg-white shadow-2xl rounded-[2.5rem]">
-              <h3 className="mb-2 text-2xl font-black text-teal-900">Report an Issue</h3>
-              <form onSubmit={submitComplaint} className="flex flex-col gap-4">
-                <select value={complaint.category} onChange={(e) => setComplaint({ ...complaint, category: e.target.value })} className="p-4 font-medium border border-gray-100 outline-none bg-gray-50 rounded-2xl focus:ring-2 focus:ring-teal-800">
-                  <option>Price Issue</option>
-                  <option>Work Issue</option>
-                  <option>Other</option>
-                </select>
-                <input value={complaint.title} onChange={(e) => setComplaint({ ...complaint, title: e.target.value })} placeholder="Subject" className="p-4 font-medium border border-gray-100 outline-none bg-gray-50 rounded-2xl focus:ring-2 focus:ring-teal-800" required />
-                <textarea value={complaint.message} onChange={(e) => setComplaint({ ...complaint, message: e.target.value })} placeholder="Describe what happened..." className="h-32 p-4 font-medium border border-gray-100 outline-none resize-none bg-gray-50 rounded-2xl focus:ring-2 focus:ring-teal-800" required />
-                <div className="flex gap-3 mt-2">
-                  <button type="submit" className="flex-1 py-4 font-bold text-white transition-all bg-teal-900 shadow-lg hover:bg-teal-800 rounded-2xl">Submit Report</button>
-                  <button type="button" onClick={() => setShowComplaintModal(false)} className="px-6 py-4 font-bold text-gray-900 hover:text-gray-800">Cancel</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
 };
 
-export default GenerateQuotation; 
+export default GenerateQuotation;
