@@ -79,9 +79,15 @@ const GenerateQuotation = () => {
   const [adminLogo, setAdminLogo] = useState(null);
   const [notify, setNotify] = useState({ type: "", message: "" });
 
+  // Restored States for Complaints/Inbox
+  const [showComplaintModal, setShowComplaintModal] = useState(false);
+  const [complaint, setComplaint] = useState({ category: "Price Issue", title: "", message: "" });
+  const [myMessages, setMyMessages] = useState([]);
+  const [showMyMessages, setShowMyMessages] = useState(false);
+
+  const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user") || "null");
 
-  // SYNC FIX: Auto-fetch new items from admin every 5 seconds
   useEffect(() => {
     fetchRates();
     const interval = setInterval(() => fetchRates(), 5000);
@@ -96,7 +102,20 @@ const GenerateQuotation = () => {
         .then(res => setAdminLogo(res.data.logoBase64 || res.data.logoUrl))
         .catch(() => {});
     }
+    fetchMyMessages();
   }, [user]);
+
+  const fetchMyMessages = async () => {
+    try {
+      if (!token) return;
+      const res = await axios.get("http://localhost:5000/api/messages/my-messages", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMyMessages(res.data || []);
+    } catch (err) {
+      console.error("Fetch messages error", err);
+    }
+  };
 
   const handleAddItem = (e) => {
     e.preventDefault();
@@ -123,6 +142,24 @@ const GenerateQuotation = () => {
     });
 
     setInputData({ item: "", length: "", height: "", description: "" });
+  };
+
+  const submitComplaint = async (e) => {
+    e.preventDefault();
+    try {
+      if (!complaint.title || !complaint.message) {
+        setNotify({ type: "error", message: "Title and message are required." });
+        return;
+      }
+      await axios.post("http://localhost:5000/api/messages/send", complaint, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotify({ type: "success", message: "Issue reported to admin." });
+      setShowComplaintModal(false);
+      fetchMyMessages();
+    } catch (err) {
+      setNotify({ type: "error", message: "Failed to report issue." });
+    }
   };
 
   const totalCost = quoteItems.reduce((sum, item) => sum + item.cost, 0);
@@ -195,9 +232,16 @@ const GenerateQuotation = () => {
 
         <div className="flex flex-col justify-between mb-8 sm:flex-row sm:items-center">
           <h2 className="text-4xl font-extrabold text-teal-900">Generate Quotation</h2>
-          <button onClick={handleDownloadReceipt} className="flex items-center gap-2 px-6 py-2.5 text-white bg-teal-900 shadow-md rounded-xl hover:bg-teal-800 transition-all">
-            <Download size={18} /> Receipt PDF
-          </button>
+          <div className="flex items-center gap-3 mt-4 sm:mt-0">
+            <button onClick={handleDownloadReceipt} className="flex items-center gap-2 px-6 py-2.5 text-white bg-teal-900 shadow-md rounded-xl hover:bg-teal-800 transition-all">
+              <Download size={18} /> Receipt PDF
+            </button>
+            {user?.role === "user" && (
+              <button onClick={() => setShowComplaintModal(true)} className="flex items-center gap-2 px-6 py-2.5 text-white bg-teal-900 shadow-md rounded-xl hover:bg-teal-800 transition-all">
+                <AlertCircle size={18} /> Report Issue
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
@@ -249,17 +293,11 @@ const GenerateQuotation = () => {
                 <div className="max-h-64 overflow-y-auto mb-6 bg-white rounded-2xl border">
                   <table className="w-full divide-y">
                     <thead className="bg-gray-50 text-[10px] uppercase font-bold text-teal-900">
-                      <tr>
-                        <th className="p-3 text-left">Item</th>
-                        <th className="p-3 text-right">Cost</th>
-                      </tr>
+                      <tr><th className="p-3 text-left">Item</th><th className="p-3 text-right">Cost</th></tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {quoteItems.map(item => (
-                        <tr key={item.id}>
-                          <td className="p-3"><ResultItemLayout item={item} /></td>
-                          <td className="p-3 text-right font-bold text-gray-800">₹{item.cost.toLocaleString()}</td>
-                        </tr>
+                        <tr key={item.id}><td className="p-3"><ResultItemLayout item={item} /></td><td className="p-3 text-right font-bold text-gray-800">₹{item.cost.toLocaleString()}</td></tr>
                       ))}
                     </tbody>
                   </table>
@@ -270,25 +308,71 @@ const GenerateQuotation = () => {
                     <input type="number" placeholder="Discount %" value={discountInput} onChange={(e) => setDiscountInput(e.target.value)} className="w-full p-2 border rounded-xl text-sm outline-none" />
                     <button onClick={applyDiscount} className="bg-teal-900 text-white px-4 py-2 rounded-xl text-sm font-bold">Apply</button>
                   </div>
-
-                  {appliedDiscount > 0 && (
-                    <div className="flex justify-between px-2 text-sm font-medium text-gray-600">
-                      <span>Subtotal:</span>
-                      <span>₹{totalCost.toLocaleString()}</span>
-                    </div>
-                  )}
-
                   <div className="bg-teal-800 text-white p-5 rounded-2xl shadow-md flex justify-between items-center">
                     <span className="text-xs font-bold uppercase opacity-80">Grand Total</span>
                     <span className="text-2xl font-black">₹{discountedTotal.toLocaleString()}</span>
                   </div>
-                  
-                  <button onClick={() => { resetQuote(); setAppliedDiscount(0); setDiscountInput(""); }} className="w-full text-red-500 font-bold hover:bg-red-50 py-2 rounded-xl text-sm transition-colors">Reset List</button>
+                  <button onClick={() => { resetQuote(); setAppliedDiscount(0); setDiscountInput(""); }} className="w-full mt-4 text-red-500 font-bold hover:bg-red-50 py-2 rounded-xl text-sm transition-colors">Reset List</button>
                 </div>
               </>
             )}
           </div>
         </div>
+
+        {/* COMMUNICATION HISTORY (INBOX) */}
+        {user?.role === "user" && (
+          <div className="pt-8 mt-12 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-teal-900">Communication History</h3>
+              <button onClick={() => setShowMyMessages(!showMyMessages)} className="px-5 py-2 text-sm font-bold text-white bg-teal-900 rounded-full shadow-md">
+                {showMyMessages ? "Hide Inbox" : "View Messages"}
+              </button>
+            </div>
+            {showMyMessages && (
+              <div className="space-y-4">
+                {myMessages.length === 0 ? <p className="text-gray-400">No messages found.</p> : 
+                  myMessages.map((m) => (
+                    <div key={m._id} className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl">
+                      <div className="flex justify-between mb-2">
+                        <span className="text-xs font-bold uppercase text-gray-400">{m.category}</span>
+                        <span className="text-xs font-bold uppercase px-2 py-1 bg-gray-100 rounded-full">{m.status}</span>
+                      </div>
+                      <p className="text-sm font-bold text-teal-900">Subject: <span className="font-normal text-gray-600">{m.title}</span></p>
+                      <p className="text-sm font-bold text-teal-900">Message: <span className="font-normal text-gray-600">{m.message}</span></p>
+                      {m.reply && (
+                        <div className="mt-4 p-4 bg-gray-50 border-l-4 border-teal-900 rounded-xl italic text-sm text-gray-800">
+                          "Admin: {m.reply}"
+                        </div>
+                      )}
+                    </div>
+                  ))
+                }
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* REPORT ISSUE MODAL */}
+        {showComplaintModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+            <div className="w-full max-w-md p-8 bg-white shadow-2xl rounded-[2.5rem]">
+              <h3 className="mb-2 text-2xl font-black text-teal-900">Report an Issue</h3>
+              <form onSubmit={submitComplaint} className="flex flex-col gap-4">
+                <select value={complaint.category} onChange={(e) => setComplaint({ ...complaint, category: e.target.value })} className="p-4 font-medium border border-gray-100 outline-none bg-gray-50 rounded-2xl focus:ring-2 focus:ring-teal-800">
+                  <option>Price Issue</option>
+                  <option>Work Issue</option>
+                  <option>Other</option>
+                </select>
+                <input value={complaint.title} onChange={(e) => setComplaint({ ...complaint, title: e.target.value })} placeholder="Subject" className="p-4 font-medium border border-gray-100 outline-none bg-gray-50 rounded-2xl focus:ring-2 focus:ring-teal-800" required />
+                <textarea value={complaint.message} onChange={(e) => setComplaint({ ...complaint, message: e.target.value })} placeholder="Describe what happened..." className="h-32 p-4 font-medium border border-gray-100 outline-none resize-none bg-gray-50 rounded-2xl focus:ring-2 focus:ring-teal-800" required />
+                <div className="flex gap-3 mt-2">
+                  <button type="submit" className="flex-1 py-4 font-bold text-white bg-teal-900 shadow-lg hover:bg-teal-800 rounded-2xl">Submit Report</button>
+                  <button type="button" onClick={() => setShowComplaintModal(false)} className="px-6 py-4 font-bold text-gray-900">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
