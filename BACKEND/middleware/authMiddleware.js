@@ -1,7 +1,6 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
-// Verify token
 export const verifyToken = async (req, res, next) => {
   const auth = req.headers.authorization;
 
@@ -20,11 +19,11 @@ export const verifyToken = async (req, res, next) => {
     req.user = user;
     next();
   } catch (err) {
+    // This triggers the 403 in your console if the token is old
     return res.status(403).json({ message: "Invalid or expired token." });
   }
 };
 
-// Admin only
 export const verifyAdmin = (req, res, next) => {
   if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({ message: "Access denied. Admins only." });
